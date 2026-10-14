@@ -1,0 +1,136 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using TP6Programacion.Backend.Excepciones;
+using TP6Programacion.Backend.Models.ModeloAuxiliar;
+using TP6Programacion.Backend.Services;
+using TP6Programacion.Shared.DTO.Cliente.Request;
+using TP6Programacion.Shared.DTO.Cliente.Response;
+using TP6Programacion.Shared.DTO.Paginado.Request.Cliente;
+using TP6Programacion.Shared.DTO.Paginado.Response;
+
+namespace TP6Programacion.Backend.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+[Authorize]
+
+public class ClientesController : ControllerBase
+{
+    private readonly ClienteService _clienteService;
+
+    public ClientesController(ClienteService clienteService)
+    {
+        _clienteService = clienteService;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<PaginadoResponseDto<ClienteResponse>>> ObtenerTodos(
+        [FromQuery] ParametroPaginacionClienteRequest parametros)
+    {
+        try
+        {
+            PaginadoResponse<ClienteResponse> clientes = await _clienteService.ObtenerTodos(parametros);
+
+            PaginadoResponseDto<ClienteResponse> paginadoResponseDto = new PaginadoResponseDto<ClienteResponse>(clientes.NumeroPagina,
+                clientes.TamanoPagina, clientes.TotalRegistros, clientes.TotalPaginas, clientes.TienePaginaAnterior,
+                clientes.TienePaginaPosterior, clientes.Datos);
+
+            return Ok(paginadoResponseDto);
+        }
+        catch (BaseDeDatosException e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ClienteResponse>> ObtenerPorId(int id)
+    {
+        try
+        {
+            return Ok(await _clienteService.ObtenerPorId(id));
+        }
+        catch (RecursoNoExisteException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (BaseDeDatosException e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Administrador")]
+    public async Task<ActionResult<ClienteResponse>> Crear(CrearClienteRequest dto)
+    {
+        try
+        {
+            ClienteResponse cliente = await _clienteService.Crear(dto);
+            return CreatedAtAction(nameof(ObtenerPorId), new { id = cliente.Id }, cliente);
+        }
+        catch (DatosLlegaronErradosException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (RecursoExistenteException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (BaseDeDatosException e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> Actualizar(int id, ActualizarClienteRequest dto)
+    {
+        try
+        {
+            await _clienteService.Actualizar(id, dto);
+            return NoContent();
+        }
+        catch (DatosLlegaronErradosException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (RecursoNoExisteException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (RecursoExistenteException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (BaseDeDatosException e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> Eliminar(int id)
+    {
+        try
+        {
+            await _clienteService.Eliminar(id);
+            return NoContent();
+        }
+        catch (RecursoNoExisteException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (RecursoExistenteException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (BaseDeDatosException e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
+    }
+}
+
