@@ -1,17 +1,76 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+@*
+<MudLayout>
+    <MudAppBar>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudSpacer />
+        <MudText Typo="Typo.h5" Align="Align.Center">TP2 Programación Web</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Brightness3" Color="Color.Inherit" OnClick="((e) => DarkModeToggle())"></MudIconButton>
+        <AuthorizeView>
+            <Authorized>
+                <MudText Class="ml-2">@context.User.Identity?.Name</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                               aria-label="Cerrar sesión" OnClick="CerrarSesion" />
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    <MudDrawer @bind-Open="_drawerAbierto" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary">
+        <MudNavMenu>
+            <MudNavLink Href="/" Match="NavLinkMatch.All">
+                Inicio
+            </MudNavLink>
+            <MudNavGroup Title="CRUD" Expanded="true">
+                <MudNavGroup Title="Proveedores">
+                    <MudNavLink Href="/proveedores/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
+                    <MudNavLink Href="/proveedores/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
+                </MudNavGroup>
+                <MudNavGroup Title="Categorias">
+                    <MudNavLink Href="/categorias/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
+                    <MudNavLink Href="/categorias/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
+                </MudNavGroup>
+                <MudNavGroup Title="Productos">
+                    <MudNavLink Href="/productos/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
+                    <MudNavLink Href="/productos/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
+                </MudNavGroup>
+                <MudNavGroup Title="Ingresos">
+                    <MudNavLink Href="/ingresos/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
+                    <MudNavLink Href="/ingresos/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
+                </MudNavGroup>
+            </MudNavGroup>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <AuthorizeView>
+            <Authorized>@Body</Authorized>
+            <Authorizing><MudProgressLinear Indeterminate="true" /></Authorizing>
+            <NotAuthorized><RedirectToLogin /></NotAuthorized>
+        </AuthorizeView>
+    </MudMainContent>
+</MudLayout>
+
+@code
+{
+    bool _drawerAbierto = false;
+    bool _darkMode = true;
+
+    void DrawerToggle() => _drawerAbierto = !_drawerAbierto;
+
+    void DarkModeToggle() => _darkMode = !_darkMode;
+
+    async Task CerrarSesion()
+    {
+        await AuthStateProvider.CerrarSesion();
+        NavigationManager.NavigateTo("/login");
+    }
+}
+*@

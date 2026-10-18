@@ -1,8 +1,41 @@
+using Microsoft.EntityFrameworkCore;
+using TP6Programacion.Backend.Data;
+using TP6Programacion.Backend.Implementacion;
+using TP6Programacion.Backend.Options;
+using TP6Programacion.Backend.Repositories;
+using TP6Programacion.Backend.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services.AddAuthorization();
+builder.Services.AddDbContext<DataContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
+builder.Services.AddScoped<IClienteRepository, ClienteRepositoryPsqlEF>();
+builder.Services.AddScoped<IImagenRepository, ImagenRepositoryPsqlEF>();
+builder.Services.AddScoped<IIngresoRepository, IngresoRepositoryPsqlEF>();
+builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
+builder.Services.AddScoped<IProveedorRepository, ProveedorRepositoryPsqlEF>();
+builder.Services.AddScoped<IRegisterRepository, RegisterRepositoryPsqlEF>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
+builder.Services.AddScoped<IVentaRepository, VentaRepositoryPsqlEF>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddScoped<CategoriaService>();
+builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<ImagenService>();
+builder.Services.AddScoped<IngresoService>();
+builder.Services.AddScoped<LoginService>();
+builder.Services.AddScoped<ProductoService>();
+builder.Services.AddScoped<ProveedorService>();
+builder.Services.AddScoped<RegisterService>();
+builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<VentaService>();
 
 var app = builder.Build();
 
@@ -13,29 +46,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapControllers();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
