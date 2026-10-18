@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using MudBlazor.Services;
 
 namespace TP6Programacion.Mobile;
 
@@ -15,6 +16,8 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddMauiBlazorWebView();
+
+		builder.Services.AddMudServices();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
