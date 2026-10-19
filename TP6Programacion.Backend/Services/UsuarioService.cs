@@ -1,3 +1,4 @@
+using TP6Programacion.Shared.DTO.Auth.Response;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Usuario;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
@@ -19,6 +20,16 @@ namespace TP6Programacion.Backend.Services
         {
             _repo = repo;
             _tokenService = tokenService;
+        }
+
+        public async Task<UsuarioActualResponse> ObtenerActual(int id)
+        {
+            var usuario = await _repo.BuscarPorId(id);
+
+            if (usuario is null || usuario.Eliminado)
+                throw new SesionInvalidaException();
+
+            return new UsuarioActualResponse(usuario.Id, usuario.Username, usuario.Email, usuario.EsAdministrador);
         }
 
         public async Task ConvertirEnAdministrador(int id)

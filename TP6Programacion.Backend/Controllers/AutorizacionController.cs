@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,14 @@ namespace TP6Programacion.Backend.Controllers
         private readonly LoginService _loginService;
         private readonly RegisterService _registerService;
         private readonly SesionService _sesionService;
+        private readonly UsuarioService _usuarioService;
 
-        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService)
+        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService, UsuarioService usuarioService)
         {
             _loginService = loginService;
             _registerService = registerService;
             _sesionService = sesionService;
+            _usuarioService = usuarioService;
         }
 
         // Mirá Program.cs en la parte de Forgery para entender lo que estoy haciendo acá.
@@ -86,6 +89,10 @@ namespace TP6Programacion.Backend.Controllers
             {
                 return BadRequest(e.Message);
             }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
+            }
             catch (BaseDeDatosException e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
@@ -128,9 +135,72 @@ namespace TP6Programacion.Backend.Controllers
             {
                 return BadRequest(e.Message);
             }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
+            }
             catch (BaseDeDatosException e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CerrarSesion(LogoutRequest request)
+        {
+            try
+            {
+                await _sesionService.Cerrar(request.RefreshToken);
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (BaseDeDatosException e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpPost("web/logout")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CerrarSesionWeb()
+        {
+            try
+            {
+                var refreshToken = Request.Cookies["refresh_token"];
+
+                if (!string.IsNullOrWhiteSpace(refreshToken))
+                    await _sesionService.Cerrar(refreshToken);
+
+                EliminarCookies();
+                return NoContent();
+            }
+            catch (BaseDeDatosException e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpGet("usuario-actual")]
+        [Authorize]
+        public async Task<ActionResult<UsuarioActualResponse>> ObtenerUsuarioActual()
+        {
+            var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!int.TryParse(id, out var usuarioId))
+                return Unauthorized();
+
+            try
+            {
+                return Ok(await _usuarioService.ObtenerActual(usuarioId));
+            }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
             }
         }
 
@@ -156,6 +226,25 @@ namespace TP6Programacion.Backend.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
+        private void EliminarCookies()
+        {
+            Response.Cookies.Delete("access_token", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/"
+            });
+
+            Response.Cookies.Delete("refresh_token", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Path = "/api/auth"
+            });
+        }
+
         private void GuardarCookies(LoginResponse respuesta)
         {
             var jwt = new JsonWebTokenHandler().ReadJsonWebToken(respuesta.Token!);

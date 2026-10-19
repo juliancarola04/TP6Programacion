@@ -16,6 +16,29 @@ public class SesionService
         _tokenService = tokenService;
     }
 
+    public async Task Cerrar(string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new DatosLlegaronErradosException("El refresh token está vacío.");
+
+        var hash = _tokenService.CalcularHash(refreshToken);
+        var sesion = await _sesionRepository.ObtenerPorRefreshToken(hash);
+
+        if (sesion is null || sesion.Revocada is not null)
+            return;
+
+        sesion.Revocada = DateTime.UtcNow;
+
+        try
+        {
+            await _sesionRepository.GuardarCambios();
+        }
+        catch (DbUpdateException)
+        {
+            throw new BaseDeDatosException("No se pudo cerrar la sesión.");
+        }
+    }
+
     public async Task<LoginResponse> Renovar(string refreshToken)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
@@ -27,7 +50,7 @@ public class SesionService
 
         if (sesion is null || sesion.Revocada is not null || sesion.Expira <= ahora || sesion.Usuario is null || sesion.Usuario.Eliminado)
         {
-            throw new DatosLlegaronErradosException("La sesión no es válida.");
+            throw new SesionInvalidaException();
         }
 
         var (token, _) = _tokenService.CrearToken(sesion.Usuario);
