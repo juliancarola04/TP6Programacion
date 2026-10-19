@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.JsonWebTokens;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Services;
@@ -96,7 +96,7 @@ namespace TP6Programacion.Backend.Controllers
         {
             try
             {
-                string? idClaimUsuario = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                string? idClaimUsuario = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
                 if (!int.TryParse(idClaimUsuario, out int id))
                 {
@@ -125,7 +125,7 @@ namespace TP6Programacion.Backend.Controllers
         {
             try
             {
-                string? idClaimUsuario = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+                string? idClaimUsuario = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
                 if (!int.TryParse(idClaimUsuario, out int id))
                 {

@@ -13,6 +13,7 @@ namespace TP6Programacion.Backend.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfiguration(new CategoriaConfiguracion());
+            modelBuilder.ApplyConfiguration(new SesionUsuarioConfiguracion());
             modelBuilder.ApplyConfiguration(new ClienteConfiguracion());
             modelBuilder.ApplyConfiguration(new DetalleIngresoConfiguracion());
             modelBuilder.ApplyConfiguration(new DetalleVentaConfiguracion());
@@ -40,6 +41,7 @@ namespace TP6Programacion.Backend.Data
         public DbSet<Ingreso> Ingresos { get; set; }
         public DbSet<Producto> Productos { get; set; }
         public DbSet<Proveedor> Proveedores { get; set; }
+        public DbSet<SesionUsuario> SesionesUsuarios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Venta> Ventas { get; set; }
     }

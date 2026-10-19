@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using TP6Programacion.Backend.Models;
 using TP6Programacion.Backend.Options;
@@ -43,5 +44,16 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
         var token = handler.CreateToken(descriptor);
 
         return (token, expiracion);
+    }
+
+    public string CrearRefreshToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+    }
+
+    public string CalcularHash(string token)
+    {
+        var bytes = Encoding.UTF8.GetBytes(token);
+        return Convert.ToHexString(SHA256.HashData(bytes));
     }
 }

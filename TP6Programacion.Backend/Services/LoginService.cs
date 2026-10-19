@@ -11,11 +11,13 @@ namespace TP6Programacion.Backend.Services
     {
         private readonly IUsuarioRepository _usuarioRepository;
         private readonly ITokenService _tokenService;
+        private readonly ISesionUsuarioRepository _sesionRepository;
         
-        public LoginService(ITokenService tokenService, IUsuarioRepository usuarioRepository)
+        public LoginService(ITokenService tokenService, IUsuarioRepository usuarioRepository, ISesionUsuarioRepository sesionRepository)
         {
             _tokenService = tokenService;
             _usuarioRepository = usuarioRepository;
+            _sesionRepository = sesionRepository;
         }
 
 
@@ -39,11 +41,19 @@ namespace TP6Programacion.Backend.Services
 
                 if (sonIguales)
                 {
-                    (string token, DateTime expiracion) = _tokenService.CrearToken(usuario);
+                    var (token, _) = _tokenService.CrearToken(usuario);
+                    var refreshToken = _tokenService.CrearRefreshToken();
 
-                    LoginResponse loginResponse = new LoginResponse(token);
+                    var sesion = new SesionUsuario
+                    {
+                        UsuarioId = usuario.Id,
+                        RefreshToken = _tokenService.CalcularHash(refreshToken),
+                        Expira = DateTime.UtcNow.AddDays(30)
+                    };
 
-                    return loginResponse;
+                    await _sesionRepository.Crear(sesion);
+
+                    return new LoginResponse(token, refreshToken, sesion.Expira);
                 }
                 else
                 {
