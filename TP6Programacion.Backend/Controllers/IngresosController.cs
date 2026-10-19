@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.JsonWebTokens;
 using System.Security.Claims;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
@@ -65,7 +64,7 @@ public class IngresosController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<IngresoResponse>> Crear(CrearIngresoRequest dto)
     {
-        string? usuarioIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        string? usuarioIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (usuarioIdClaim is null || !int.TryParse(usuarioIdClaim, out int usuarioId))
         {
