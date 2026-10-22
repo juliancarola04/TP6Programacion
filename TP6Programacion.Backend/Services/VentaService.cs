@@ -1,12 +1,13 @@
 using System.Data.Common;
 using TP6Programacion.Backend.Excepciones;
-using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Venta;
-using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Models;
+using TP6Programacion.Backend.Models.ModeloAuxiliar;
+using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Venta;
 using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Shared.DTO.Paginado.Request.Venta;
 using TP6Programacion.Shared.DTO.Venta.Request;
 using TP6Programacion.Shared.DTO.Venta.Response;
+using TP6Programacion.Shared.Enums;
 
 namespace TP6Programacion.Backend.Services
 {
@@ -35,7 +36,7 @@ namespace TP6Programacion.Backend.Services
                     : parametros.TamanoPagina > 50 ? 50 : parametros.TamanoPagina.Value;
 
                 int? clienteId = parametros.ClienteId;
-                bool? anulada = parametros.Anulada;
+                EstadoVenta? estado = parametros.Estado.Value;
 
                 string? direccion =
                     string.IsNullOrWhiteSpace(parametros.Direccion) ||
@@ -52,7 +53,7 @@ namespace TP6Programacion.Backend.Services
                     NumeroPagina = numeroPagina,
                     TamanoPagina = tamanoPagina,
                     ClienteId = clienteId,
-                    Anulada = anulada,
+                    Estado = estado,
                     Buscar = buscar,
                     OrdenarPor = ordenarPor,
                     Direccion = direccion
@@ -61,7 +62,7 @@ namespace TP6Programacion.Backend.Services
                 PaginadoResponse<Venta> resultado = await _repo.ObtenerTodas(ventaQueryParametros);
 
                 List<VentaListadoResponse> ventas = resultado.Datos.Select(v => new VentaListadoResponse(
-                    v.Id, v.Fecha, v.Total, v.ClienteId, v.Cliente.Nombre, v.Anulada
+                    v.Id, v.Fecha, v.Total, v.ClienteId, v.Cliente?.Nombre, v.Estado
                 )).ToList();
 
                 return new PaginadoResponse<VentaListadoResponse>(
@@ -157,7 +158,8 @@ namespace TP6Programacion.Backend.Services
                     Total = total,
                     ClienteId = dto.ClienteId,
                     UsuarioId = usuarioId,
-                    DetallesVentas = detalles
+                    DetallesVentas = detalles,
+                    Estado = EstadoVenta.Confirmada
                 };
 
                 await _repo.Crear(venta);
@@ -181,10 +183,10 @@ namespace TP6Programacion.Backend.Services
                 venta.Fecha,
                 venta.Total,
                 venta.ClienteId,
-                venta.Cliente.Nombre,
+                venta.Cliente?.Nombre,
                 venta.UsuarioId,
-                venta.Usuario.Username,
-                venta.Anulada,
+                venta.Usuario?.Username,
+                venta.Estado,
                 detalles);
         }
         public async Task Anular(int id)
@@ -197,17 +199,17 @@ namespace TP6Programacion.Backend.Services
                     throw new RecursoNoExisteException("No existe ninguna venta con ese id.");
                 }
 
-                if (venta.Anulada)
-                {
-                    throw new DatosLlegaronErradosException("La venta ya se encuentra anulada.");
-                }
+            if (venta.Estado == EstadoVenta.Anulada)
+                throw new DatosLlegaronErradosException("La venta ya se encuentra anulada.");
+            if (venta.Estado != EstadoVenta.Confirmada)
+                throw new DatosLlegaronErradosException("Solo se pueden anular ventas confirmadas.");
 
-                foreach (DetalleVenta detalle in venta.DetallesVentas)
+            foreach (DetalleVenta detalle in venta.DetallesVentas)
                 {
                     detalle.Producto.Stock += detalle.Cantidad;
                 }
 
-                venta.Anulada = true;
+                venta.Estado = EstadoVenta.Anulada;
 
                 await _repo.GuardarCambios();
 

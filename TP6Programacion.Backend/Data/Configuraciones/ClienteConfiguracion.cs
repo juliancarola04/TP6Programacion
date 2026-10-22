@@ -38,6 +38,13 @@ namespace TP6Programacion.Backend.Data.Configuraciones
                 .IsRequired()
                 .HasMaxLength(40);
 
+            builder.HasIndex(x => x.UsuarioId)
+                .IsUnique();
+            builder.HasOne(x => x.Usuario)
+                .WithOne(x => x.Cliente)
+                .HasForeignKey<Cliente>(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

@@ -22,6 +22,51 @@ namespace TP6Programacion.Backend.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TP6Programacion.Backend.Models.Auditoria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Accion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Detalle")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DireccionIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<string>("Entidad")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("EntidadId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fecha");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("Entidad", "EntidadId");
+
+                    b.ToTable("Auditorias", (string)null);
+                });
+
             modelBuilder.Entity("TP6Programacion.Backend.Models.Categoria", b =>
                 {
                     b.Property<int>("Id")
@@ -78,12 +123,18 @@ namespace TP6Programacion.Backend.Migrations
                         .HasMaxLength(13)
                         .HasColumnType("character varying(13)");
 
+                    b.Property<int?>("UsuarioId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Dni")
                         .IsUnique();
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId")
                         .IsUnique();
 
                     b.ToTable("Clientes", (string)null);
@@ -204,6 +255,41 @@ namespace TP6Programacion.Backend.Migrations
                     b.ToTable("Ingresos", (string)null);
                 });
 
+            modelBuilder.Entity("TP6Programacion.Backend.Models.Pago", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Metodo")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Monto")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ReferenciaPago")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("VentaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VentaId");
+
+                    b.ToTable("Pagos", (string)null);
+                });
+
             modelBuilder.Entity("TP6Programacion.Backend.Models.Producto", b =>
                 {
                     b.Property<int>("Id")
@@ -214,6 +300,9 @@ namespace TP6Programacion.Backend.Migrations
 
                     b.Property<int>("CategoriaId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Eliminado")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -227,6 +316,9 @@ namespace TP6Programacion.Backend.Migrations
                         .HasColumnType("numeric");
 
                     b.Property<int>("Stock")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StockMinimo")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -295,6 +387,7 @@ namespace TP6Programacion.Backend.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RefreshToken")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -331,12 +424,12 @@ namespace TP6Programacion.Backend.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<bool>("EsAdministrador")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("Rol")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -362,19 +455,23 @@ namespace TP6Programacion.Backend.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("Anulada")
-                        .HasColumnType("boolean");
+                    b.Property<int?>("ClienteId")
+                        .HasColumnType("integer");
 
-                    b.Property<int>("ClienteId")
+                    b.Property<int>("Estado")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<decimal>("Total")
-                        .HasColumnType("numeric");
+                    b.Property<DateTime?>("FechaExpiracion")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("UsuarioId")
+                    b.Property<decimal>("Total")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int?>("UsuarioId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -383,7 +480,32 @@ namespace TP6Programacion.Backend.Migrations
 
                     b.HasIndex("UsuarioId");
 
-                    b.ToTable("Ventas", (string)null);
+                    b.ToTable("Ventas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Ventas_ClienteOUsuario", "\"ClienteId\" IS NOT NULL OR \"UsuarioId\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Ventas_FechaExpiracion", "\"FechaExpiracion\" IS NULL OR (\"Estado\" = 1 AND \"UsuarioId\" IS NULL AND \"ClienteId\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("TP6Programacion.Backend.Models.Auditoria", b =>
+                {
+                    b.HasOne("TP6Programacion.Backend.Models.Usuario", "Usuario")
+                        .WithMany("Auditorias")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("TP6Programacion.Backend.Models.Cliente", b =>
+                {
+                    b.HasOne("TP6Programacion.Backend.Models.Usuario", "Usuario")
+                        .WithOne("Cliente")
+                        .HasForeignKey("TP6Programacion.Backend.Models.Cliente", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("TP6Programacion.Backend.Models.DetalleIngreso", b =>
@@ -454,6 +576,17 @@ namespace TP6Programacion.Backend.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("TP6Programacion.Backend.Models.Pago", b =>
+                {
+                    b.HasOne("TP6Programacion.Backend.Models.Venta", "Venta")
+                        .WithMany("Pagos")
+                        .HasForeignKey("VentaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Venta");
+                });
+
             modelBuilder.Entity("TP6Programacion.Backend.Models.Producto", b =>
                 {
                     b.HasOne("TP6Programacion.Backend.Models.Categoria", "Categoria")
@@ -481,14 +614,12 @@ namespace TP6Programacion.Backend.Migrations
                     b.HasOne("TP6Programacion.Backend.Models.Cliente", "Cliente")
                         .WithMany("Ventas")
                         .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("TP6Programacion.Backend.Models.Usuario", "Usuario")
                         .WithMany("Ventas")
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Cliente");
 
@@ -526,6 +657,10 @@ namespace TP6Programacion.Backend.Migrations
 
             modelBuilder.Entity("TP6Programacion.Backend.Models.Usuario", b =>
                 {
+                    b.Navigation("Auditorias");
+
+                    b.Navigation("Cliente");
+
                     b.Navigation("Ingresos");
 
                     b.Navigation("Ventas");
@@ -534,6 +669,8 @@ namespace TP6Programacion.Backend.Migrations
             modelBuilder.Entity("TP6Programacion.Backend.Models.Venta", b =>
                 {
                     b.Navigation("DetallesVentas");
+
+                    b.Navigation("Pagos");
                 });
 #pragma warning restore 612, 618
         }

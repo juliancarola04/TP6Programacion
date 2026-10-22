@@ -1,7 +1,9 @@
-﻿namespace TP6Programacion.Shared.DTO.Usuario.Response;
+﻿using TP6Programacion.Shared.Enums;
+
+namespace TP6Programacion.Shared.DTO.Usuario.Response;
 
 public record ObtenerUsuarioResponse(
     int Id,
     string Username,
     string Email,
-    bool EsAdministrador);
+    Rol Rol);
