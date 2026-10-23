@@ -1,76 +1,98 @@
-﻿@inherits LayoutComponentBase
-@inject NavigationManager NavigationManager
+@inherits LayoutComponentBase
+@using System.Net
+@using TP6Programacion.Mobile.Services
+@using TP6Programacion.Shared.DTO.Auth.Response
+@inject AutenticacionService AutenticacionService
+@inject AlmacenamientoTokensService AlmacenamientoTokensService
+@inject NavigationManager Navigation
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-@*
-<MudLayout>
-    <MudAppBar>
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudSpacer />
-        <MudText Typo="Typo.h5" Align="Align.Center">TP2 Programación Web</MudText>
-        <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.Brightness3" Color="Color.Inherit" OnClick="((e) => DarkModeToggle())"></MudIconButton>
-        <AuthorizeView>
-            <Authorized>
-                <MudText Class="ml-2">@context.User.Identity?.Name</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                               aria-label="Cerrar sesión" OnClick="CerrarSesion" />
-            </Authorized>
-        </AuthorizeView>
-    </MudAppBar>
-
-    <MudDrawer @bind-Open="_drawerAbierto" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary">
-        <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All">
-                Inicio
-            </MudNavLink>
-            <MudNavGroup Title="CRUD" Expanded="true">
-                <MudNavGroup Title="Proveedores">
-                    <MudNavLink Href="/proveedores/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
-                    <MudNavLink Href="/proveedores/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
-                </MudNavGroup>
-                <MudNavGroup Title="Categorias">
-                    <MudNavLink Href="/categorias/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
-                    <MudNavLink Href="/categorias/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
-                </MudNavGroup>
-                <MudNavGroup Title="Productos">
-                    <MudNavLink Href="/productos/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
-                    <MudNavLink Href="/productos/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
-                </MudNavGroup>
-                <MudNavGroup Title="Ingresos">
-                    <MudNavLink Href="/ingresos/insert" Match="NavLinkMatch.Prefix">Insertar</MudNavLink>
-                    <MudNavLink Href="/ingresos/view" Match="NavLinkMatch.Prefix">Observar</MudNavLink>
-                </MudNavGroup>
-            </MudNavGroup>
-        </MudNavMenu>
-    </MudDrawer>
-
-    <MudMainContent>
-        <AuthorizeView>
-            <Authorized>@Body</Authorized>
-            <Authorizing><MudProgressLinear Indeterminate="true" /></Authorizing>
-            <NotAuthorized><RedirectToLogin /></NotAuthorized>
-        </AuthorizeView>
-    </MudMainContent>
-</MudLayout>
-
-@code
+@if (_cargando)
 {
-    bool _drawerAbierto = false;
-    bool _darkMode = true;
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <MudStack Class="pa-6" Spacing="3">
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CargarSesion">
+            Reintentar
+        </MudButton>
+    </MudStack>
+}
+else if (_autorizado)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
 
-    void DrawerToggle() => _drawerAbierto = !_drawerAbierto;
+        <main>
+            <div class="top-row px-4">
+                <span>@_usuario?.Username (@_usuario?.Rol)</span>
+                <BotonCerrarSesion />
+            </div>
 
-    void DarkModeToggle() => _darkMode = !_darkMode;
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
 
-    async Task CerrarSesion()
+@code {
+    private bool _cargando = true;
+    private bool _autorizado;
+    private UsuarioActualResponse? _usuario;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
     {
-        await AuthStateProvider.CerrarSesion();
-        NavigationManager.NavigateTo("/login");
+        await CargarSesion();
+    }
+
+    private async Task CargarSesion()
+    {
+        _cargando = true;
+        _autorizado = false;
+        _error = null;
+
+        try
+        {
+            LoginResponse? sesion = await AlmacenamientoTokensService.Obtener();
+
+            if (sesion is null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            _usuario = await AutenticacionService.ObtenerUsuarioActual();
+            _autorizado = true;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                AlmacenamientoTokensService.Limpiar();
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo recuperar la sesión. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
     }
 }
-*@

@@ -27,9 +27,36 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
 });
+
+builder.Services.AddCors(options =>
+{
+    if (builder.Environment.IsProduction())
+    {
+        options.AddPolicy("Web", policy =>
+        {
+            policy.WithOrigins("https://tpprogramacion.runasp.net")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    }
+    else if (builder.Environment.IsDevelopment())
+    {
+        options.AddPolicy("Web", policy =>
+        {
+            policy.WithOrigins("https://localhost:7248")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    }
+});
+
 builder.Services.AddAuthorization();
+
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -125,6 +152,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("Web");
 app.UseAuthentication();
 app.UseAuthorization();
 

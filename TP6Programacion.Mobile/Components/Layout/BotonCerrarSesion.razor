@@ -1,0 +1,55 @@
+@using TP6Programacion.Mobile.Services
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+
+<MudStack Spacing="2">
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    <MudButton Color="Color.Primary"
+               Disabled="_procesando"
+               OnClick="Cerrar">
+        @(_procesando ? "Cerrando sesión..." : "Cerrar sesión")
+    </MudButton>
+</MudStack>
+
+@code {
+
+    private bool _procesando;
+    private string? _error;
+
+    private async Task Cerrar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await AutenticacionService.CerrarSesion();
+
+
+            Navigation.NavigateTo("/login");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la solicitud. Intentá nuevamente.";
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

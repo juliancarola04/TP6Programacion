@@ -4,68 +4,59 @@ using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Backend.Utilidades;
 using TP6Programacion.Shared.DTO.Auth.Request;
 using TP6Programacion.Shared.DTO.Auth.Response;
+using TP6Programacion.Shared.Enums;
 
-namespace TP6Programacion.Backend.Services
+namespace TP6Programacion.Backend.Services;
+
+public class RegisterService(
+    IRegisterRepository repo,
+    IUsuarioRepository usuarioRepository,
+    ITokenService tokenService,
+    ISesionUsuarioRepository sesionRepository)
 {
-    public class RegisterService
+    public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, Rol.Cliente);
+
+    public Task<RegisterResponse> RegistrarseCajero(RegisterRequest request) => CrearCuenta(request, Rol.Cajero);
+
+    private async Task<RegisterResponse> CrearCuenta(RegisterRequest request, Rol rol)
     {
-        private readonly IRegisterRepository _repo;
-        private readonly IUsuarioRepository _usuarioRepository;
-        private readonly ITokenService _tokenService;
+        if (!Validaciones.EstanDatosBien(request.Username, request.Password, request.Email))
+            throw new DatosLlegaronErradosException("Alguno de los datos llegó vacío.");
 
+        string username = request.Username.Trim();
+        string password = request.Password.Trim();
+        string email = request.Email.Trim();
 
-        public RegisterService(IRegisterRepository repo, IUsuarioRepository usuarioRepository, ITokenService tokenService)
+        if (username.Length > 30 || email.Length > 320)
+            throw new DatosLlegaronErradosException("El usuario admite hasta 30 caracteres y el e-mail hasta 320.");
+
+        if (!Validaciones.EsUnEmailValido(email))
+            throw new DatosLlegaronErradosException("El formato del E-Mail es inválido.");
+
+        if (await usuarioRepository.ExistePorUsername(username))
+            throw new RecursoExistenteException("Ya existe alguien con ese usuario.");
+
+        if (await usuarioRepository.ExistePorEmail(email))
+            throw new RecursoExistenteException("Ya existe alguien con ese email.");
+
+        var usuario = new Usuario
         {
-            _repo = repo;
-            _usuarioRepository = usuarioRepository;
-            _tokenService = tokenService;
-        }
+            Username = username,
+            Password = BCrypt.Net.BCrypt.EnhancedHashPassword(password),
+            Email = email,
+            Rol = rol
+        };
+        await repo.Registrarse(usuario);
 
-        public async Task<RegisterResponse?> Registrarse(RegisterRequest registerRequest)
+        var (token, _) = tokenService.CrearToken(usuario);
+        var refreshToken = tokenService.CrearRefreshToken();
+        var sesion = new SesionUsuario
         {
-            string username = registerRequest.Username.Trim();
-            string password = registerRequest.Password.Trim();
-            string email = registerRequest.Email.Trim();
-
-            if (Validaciones.EstanDatosBien(username, password, email) == false)
-            {
-                throw new DatosLlegaronErradosException("Alguno de los datos llegó vacío.");
-            }
-            
-            if (!Validaciones.EsUnEmailValido(email))
-            {
-                throw new DatosLlegaronErradosException("El formato del E-Mail es inválido.");
-            }
-
-
-                if (await _usuarioRepository.ExistePorUsername(username))
-                {
-                    throw new RecursoExistenteException("Ya existe alguien con ese usuario.");
-                }
-                
-                if (await _usuarioRepository.ExistePorEmail(email))
-                {
-                    throw new RecursoExistenteException("Ya existe alguien con ese email.");
-                }
-
-            
-            Usuario usuario = new Usuario()
-            {
-                Username = username,
-                Password = BCrypt.Net.BCrypt.EnhancedHashPassword(password),
-                Email = email,
-            };
-
-
-                await _repo.Registrarse(usuario);
-
-                (string token, DateTime expiracion) = _tokenService.CrearToken(usuario);
-
-                RegisterResponse registerDtoOutput = new RegisterResponse(token);
-
-                return registerDtoOutput;
-
-
-        }
+            UsuarioId = usuario.Id,
+            RefreshToken = tokenService.CalcularHash(refreshToken),
+            Expira = DateTime.UtcNow.AddDays(30)
+        };
+        await sesionRepository.Crear(sesion);
+        return new RegisterResponse(token, refreshToken, sesion.Expira);
     }
 }

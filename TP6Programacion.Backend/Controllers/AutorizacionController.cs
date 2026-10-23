@@ -77,7 +77,7 @@ namespace TP6Programacion.Backend.Controllers
                 var refreshToken = Request.Cookies["refresh_token"];
 
                 if (string.IsNullOrWhiteSpace(refreshToken))
-                    throw new DatosLlegaronErradosException("El refresh token está vacío.");
+                    throw new SesionInvalidaException();
 
                 var respuesta = await _sesionService.Renovar(refreshToken);
 
@@ -226,6 +226,31 @@ namespace TP6Programacion.Backend.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
+        [HttpPost("web/register")]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RegisterWeb(RegisterRequest request)
+        {
+            try
+            {
+                var respuesta = await _registerService.RegistrarseCajero(request);
+                GuardarCookies(new LoginResponse(respuesta.Token, respuesta.RefreshToken, respuesta.SesionExpira));
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+            catch (RecursoExistenteException e)
+            {
+                return Conflict(e.Message);
+            }
+            catch (BaseDeDatosException e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
         private void EliminarCookies()
         {
             Response.Cookies.Delete("access_token", new CookieOptions

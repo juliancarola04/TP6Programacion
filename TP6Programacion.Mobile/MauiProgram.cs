@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
+using TP6Programacion.Mobile.Services;
 
 namespace TP6Programacion.Mobile;
 
@@ -18,6 +19,12 @@ public static class MauiProgram
 		builder.Services.AddMauiBlazorWebView();
 
 		builder.Services.AddMudServices();
+        builder.Services.AddSingleton<AlmacenamientoTokensService>();
+        builder.Services.AddScoped(_ => new HttpClient(new HttpClientHandler { UseCookies = false })
+        {
+            BaseAddress = new Uri(ConfiguracionApi.BaseUrl)
+        });
+        builder.Services.AddScoped<AutenticacionService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

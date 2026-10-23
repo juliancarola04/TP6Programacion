@@ -1,0 +1,119 @@
+@page "/login"
+@layout AutenticacionLayout
+@using TP6Programacion.Shared.ViewModels.Auth
+@using TP6Programacion.Shared.DTO.Auth.Request
+@using TP6Programacion.Shared.DTO.Auth.Response
+@using TP6Programacion.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Iniciar sesión
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    <MudForm @ref="_formulario"
+             Model="_modelo"
+             Disabled="_procesando"
+             OnEnterPressed="IniciarSesion">
+        <MudStack Spacing="4">
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Usuario"
+                          Label="Usuario"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu usuario." />
+
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Contrasena"
+                          Label="Contraseña"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu contraseña."
+                          InputType="InputType.Password" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="_procesando"
+                       OnClick="IniciarSesion">
+                @(_procesando ? "Ingresando..." : "Iniciar sesión")
+            </MudButton>
+        </MudStack>
+    </MudForm>
+
+    <MudButton Href="/registro"
+               Variant="Variant.Outlined"
+               Color="Color.Primary"
+               FullWidth="true">
+        Registrarse
+    </MudButton>
+</MudStack>
+
+@code {
+    private readonly LoginViewModel _modelo = new LoginViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private string? _error;
+
+    private async Task IniciarSesion()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            LoginRequest request = new LoginRequest(_modelo.Usuario, _modelo.Contrasena);
+
+            await AutenticacionService.IniciarSesion(request);
+
+            SesionUsuarioService.Limpiar();
+
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+
+            Navigation.NavigateTo("/");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo completar la solicitud de inicio de sesión.";
+            }
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

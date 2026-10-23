@@ -1,0 +1,126 @@
+@page "/registro"
+@layout AutenticacionLayout
+@using TP6Programacion.Shared.DTO.Auth.Request
+@using TP6Programacion.Shared.DTO.Auth.Response
+@using TP6Programacion.Shared.ViewModels.Auth
+@using TP6Programacion.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
+
+<PageTitle>Registrarse</PageTitle>
+
+<MudStack Spacing="6">
+    <MudText Typo="Typo.h5" HtmlTag="h1" Align="Align.Center">
+        Registrarse
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
+    }
+
+    <MudForm @ref="_formulario"
+             Model="_modelo"
+             Disabled="_procesando"
+             OnEnterPressed="Registrarse">
+        <MudStack Spacing="4">
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Usuario"
+                          Label="Usuario"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu usuario."
+                          MaxLength="30" />
+
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Contrasena"
+                          Label="Contraseña"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu contraseña."
+                          InputType="InputType.Password" />
+
+            <MudTextField T="string"
+                          @bind-Value="_modelo.Email"
+                          Label="E-mail"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu e-mail."
+                          InputType="InputType.Email"
+                          MaxLength="320" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="_procesando"
+                       OnClick="Registrarse">
+                @(_procesando ? "Creando cuenta..." : "Crear cuenta")
+            </MudButton>
+        </MudStack>
+    </MudForm>
+
+    <MudButton Href="/login" FullWidth="true">
+        Volver al inicio de sesión
+    </MudButton>
+</MudStack>
+
+@code {
+    private readonly RegistroViewModel _modelo = new RegistroViewModel();
+    private MudForm _formulario = null!;
+    private bool _procesando;
+    private string? _error;
+
+    private async Task Registrarse()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+            {
+                return;
+            }
+
+            RegisterRequest request = new RegisterRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email);
+
+            await AutenticacionService.Registrarse(request);
+
+            SesionUsuarioService.Limpiar();
+
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+
+            Navigation.NavigateTo("/");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo completar la solicitud de registro.";
+            }
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

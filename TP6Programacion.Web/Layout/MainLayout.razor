@@ -1,22 +1,91 @@
-﻿@inherits LayoutComponentBase
+@using TP6Programacion.Web.Components
+@inherits LayoutComponentBase
+@using System.Net
+@using TP6Programacion.Shared.DTO.Auth.Response
+@using TP6Programacion.Web.Services
+@inject AutenticacionService AutenticacionService
+@inject SesionUsuarioService SesionUsuarioService
+@inject NavigationManager Navigation
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@if (_cargando)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <MudStack Spacing="3" Class="pa-6">
+        <MudAlert Severity="Severity.Error">
+            @_error
+        </MudAlert>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        <MudButton OnClick="CargarSesion" Color="Color.Primary">
+            Reintentar
+        </MudButton>
+    </MudStack>
+}
+else if (SesionUsuarioService.UsuarioActual is not null)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
         </div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+        <main>
+            <div class="top-row px-4">
+                <span>@SesionUsuarioService.UsuarioActual.Username (@SesionUsuarioService.UsuarioActual.Rol)</span>
+                <BotonCerrarSesion />
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
+
+@code {
+    private bool _cargando = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSesion();
+    }
+
+    private async Task CargarSesion()
+    {
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            SesionUsuarioService.EstablecerUsuario(usuario);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                SesionUsuarioService.Limpiar();
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo recuperar la sesión. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}

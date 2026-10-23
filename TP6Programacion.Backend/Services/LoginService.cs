@@ -23,8 +23,8 @@ namespace TP6Programacion.Backend.Services
 
         public async Task<LoginResponse?> Login(LoginRequest loginRequest)
         {
-            string username = loginRequest.Username.Trim();
-            string password = loginRequest.Password.Trim();
+            string username = loginRequest.Username?.Trim() ?? string.Empty;
+            string password = loginRequest.Password?.Trim() ?? string.Empty;
 
             if (Validaciones.EstanDatosBien(username, password) == false)
             {
@@ -32,7 +32,7 @@ namespace TP6Programacion.Backend.Services
             }
                 Usuario? usuario = await _usuarioRepository.BuscarPorUsername(username);
                 
-                if (usuario is null)
+                if (usuario is null || usuario.Eliminado)
                 {
                     throw new RecursoNoExisteException("No existe ningún usuario con ese usuario.");
                 }
