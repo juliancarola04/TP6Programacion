@@ -20,9 +20,29 @@ public static class MauiProgram
 
 		builder.Services.AddMudServices();
         builder.Services.AddSingleton<AlmacenamientoTokensService>();
-        builder.Services.AddScoped(_ => new HttpClient(new HttpClientHandler { UseCookies = false })
+        builder.Services.AddScoped(_ =>
         {
-            BaseAddress = new Uri(ConfiguracionApi.BaseUrl)
+            var handler = new HttpClientHandler { UseCookies = false };
+
+#if DEBUG && ANDROID
+            handler.ServerCertificateCustomValidationCallback = (request, certificate, chain, errors) =>
+            {
+                if (errors == System.Net.Security.SslPolicyErrors.None)
+                    return true;
+
+                var uri = request.RequestUri;
+
+                return uri?.Scheme == "https"
+                    && uri.Host == "10.0.2.2"
+                    && uri.Port == 7272
+                    && certificate?.Issuer == "CN=localhost";
+            };
+#endif
+
+            return new HttpClient(handler)
+            {
+                BaseAddress = new Uri(ConfiguracionApi.BaseUrl)
+            };
         });
         builder.Services.AddScoped<AutenticacionService>();
         builder.Services.AddScoped<CatalogoService>();
