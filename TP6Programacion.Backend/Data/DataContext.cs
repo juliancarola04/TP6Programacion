@@ -24,6 +24,8 @@ namespace TP6Programacion.Backend.Data
             modelBuilder.ApplyConfiguration(new UsuarioConfiguracion());
             modelBuilder.ApplyConfiguration(new VentaConfiguracion());
             modelBuilder.ApplyConfiguration(new UsuarioConfiguracion());
+            modelBuilder.ApplyConfiguration(new AuditoriaConfiguracion());
+            modelBuilder.ApplyConfiguration(new PagoConfiguracion());
 
 
             // https://codewithmukesh.com/blog/global-query-filters-efcore/ Para no tener que poner si está o no eliminado. Esto lo tenemos que hacer con la mayoría de entidades.
@@ -44,5 +46,7 @@ namespace TP6Programacion.Backend.Data
         public DbSet<SesionUsuario> SesionesUsuarios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Venta> Ventas { get; set; }
+        public DbSet<Pago> Pagos { get; set; }
+        public DbSet<Auditoria> Auditorias { get; set; }
     }
 }

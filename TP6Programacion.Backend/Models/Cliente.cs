@@ -8,6 +8,8 @@
         public required string Telefono { get; set; } 
         public required string Email { get; set; } 
         public required string Direccion { get; set; }
+        public int? UsuarioId { get; set; }
+        public Usuario? Usuario { get; set; }
         public ICollection<Venta>? Ventas { get; set; }
     }
 }

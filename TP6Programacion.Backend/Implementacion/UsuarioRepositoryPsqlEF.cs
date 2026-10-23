@@ -38,9 +38,9 @@ namespace TP6Programacion.Backend.Implementacion
             // Le vamos a ir escribiendo al query cositas que desp se van a reflejar en una query de verdad. Pero no la sobreescribimos cuando la volvemos a asignar, simplemente le agregmaos otro where.
             IQueryable<Usuario> query = _dataContext.Usuarios.AsNoTracking().AsQueryable();
 
-            if (usuarioQueryParametros.EsAdministrador.HasValue)
+            if (usuarioQueryParametros.Rol.HasValue)
             {
-                query = query.Where(u => u.EsAdministrador == usuarioQueryParametros.EsAdministrador);
+                query = query.Where(u => u.Rol == usuarioQueryParametros.Rol.Value);
             }
             
             if (usuarioQueryParametros.Eliminado.HasValue)

@@ -24,13 +24,13 @@ namespace TP6Programacion.Backend.Implementacion
         if (parametros.ClienteId.HasValue)
             query = query.Where(v => v.ClienteId == parametros.ClienteId.Value);
 
-        if (parametros.Anulada.HasValue)
-            query = query.Where(v => v.Anulada == parametros.Anulada.Value);
+        if (parametros.Estado.HasValue)
+            query = query.Where(v => v.Estado == parametros.Estado.Value);
 
         if (!string.IsNullOrWhiteSpace(parametros.Buscar))
         {
             string buscar = parametros.Buscar.ToLower();
-            query = query.Where(v => v.Cliente.Nombre.ToLower().Contains(buscar));
+            query = query.Where(v => v.Cliente != null && v.Cliente.Nombre.ToLower().Contains(buscar));
         }
 
         bool descendente = parametros.Direccion?.Equals("desc", StringComparison.OrdinalIgnoreCase) != false;

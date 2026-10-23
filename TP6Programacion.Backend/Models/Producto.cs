@@ -7,6 +7,8 @@
         public decimal PrecioCompra { get; set; }
         public decimal PrecioVenta { get; set; }
         public int Stock { get; set; }
+        public bool Eliminado { get; set; } = false;
+        public int StockMinimo { get; set; } = 0;
         public int CategoriaId { get; set; }
         public Imagen? Imagen { get; set; }
         public Categoria Categoria { get; set; } = null!;

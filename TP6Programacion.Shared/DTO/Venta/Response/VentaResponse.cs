@@ -1,4 +1,6 @@
-﻿namespace TP6Programacion.Shared.DTO.Venta.Response;
+﻿using TP6Programacion.Shared.Enums;
+
+namespace TP6Programacion.Shared.DTO.Venta.Response;
 
 public record VentaDetalleResponse(
     int ProductoId,
@@ -11,17 +13,17 @@ public record VentaResponse(
     int Id,
     DateTime Fecha,
     decimal Total,
-    int ClienteId,
-    string ClienteNombre,
-    int UsuarioId,
-    string UsuarioUsername,
-    bool Anulada,
+    int? ClienteId,
+    string? ClienteNombre,
+    int? UsuarioId,
+    string? UsuarioUsername,
+    EstadoVenta Estado,
     List<VentaDetalleResponse> Detalles);
 
 public record VentaListadoResponse(
     int Id,
     DateTime Fecha,
     decimal Total,
-    int ClienteId,
-    string ClienteNombre,
-    bool Anulada);
+    int? ClienteId,
+    string? ClienteNombre,
+    EstadoVenta Estado);
