@@ -70,7 +70,7 @@ public class AutenticacionService
         return await _httpClient.SendAsync(solicitud);
     }
 
-    private async Task<HttpResponseMessage> EnviarAutenticado(Func<HttpRequestMessage> crearSolicitud)
+    public async Task<HttpResponseMessage> EnviarAutenticado(Func<HttpRequestMessage> crearSolicitud)
     {
         HttpResponseMessage respuesta = await EnviarConToken(crearSolicitud);
 
@@ -84,26 +84,6 @@ public class AutenticacionService
         await RenovarSesion();
 
         return await EnviarConToken(crearSolicitud);
-    }
-
-    private async Task ComprobarRespuesta(HttpResponseMessage respuesta, string mensajeError)
-    {
-        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
-
-        if (!respuesta.IsSuccessStatusCode)
-        {
-            string mensaje = await respuesta.Content.ReadAsStringAsync();
-
-            if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = mensajeError;
-            }
-
-            throw new InvalidOperationException(mensaje);
-        }
     }
 
     public async Task Registrarse(RegisterRequest request)

@@ -69,6 +69,56 @@ namespace TP6Programacion.Backend.Services
 
         }
 
+        public async Task<PaginadoResponse<ProductoCatalogoResponse>> ObtenerCatalogo(
+            ParametroPaginacionProductoRequest parametros,
+            string baseUrl)
+        {
+            var query = new ProductoQueryParametros
+            {
+                NumeroPagina = Math.Max(parametros.NumeroPagina ?? 1, 1),
+                TamanoPagina = Math.Clamp(parametros.TamanoPagina ?? 20, 1, 50),
+                CategoriaId = parametros.CategoriaId,
+                Buscar = parametros.Buscar?.Trim().ToLower(),
+                OrdenarPor = parametros.OrdenarPor,
+                Direccion = parametros.Direccion
+            };
+
+            PaginadoResponse<Producto> resultado = await _repo.ObtenerTodos(query);
+
+            List<ProductoCatalogoResponse> productos = resultado.Datos
+                .Select(producto =>
+                {
+                    ProductoImagenResponse? imagenDto = null;
+
+                    if (producto.Imagen is { } imagen)
+                    {
+                        imagenDto = new ProductoImagenResponse(
+                            imagen.Id,
+                            imagen.NombreOriginal,
+                            $"{baseUrl.TrimEnd('/')}/{imagen.RutaRelativa.TrimStart('/')}",
+                            imagen.TipoContenido,
+                            imagen.TamanoBytes,
+                            imagen.FechaCreacion);
+                    }
+
+                    return new ProductoCatalogoResponse(
+                        producto.Id,
+                        producto.Nombre,
+                        producto.PrecioVenta,
+                        producto.Stock,
+                        producto.CategoriaId,
+                        producto.Categoria?.Nombre,
+                        imagenDto);
+                })
+                .ToList();
+
+            return new PaginadoResponse<ProductoCatalogoResponse>(
+                productos,
+                resultado.NumeroPagina,
+                resultado.TamanoPagina,
+                resultado.TotalRegistros);
+        }
+
         public async Task<Producto> ObtenerPorId(int id)
         {
                 Producto? producto = await _repo.ObtenerPorId(id);

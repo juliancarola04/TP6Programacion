@@ -19,6 +19,7 @@ namespace TP6Programacion.Backend.Implementacion
         {
             IQueryable<Producto> query = _dataContext.Productos
                 .Include(p => p.Categoria)
+                .Include(p => p.Imagen)
                 .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(parametros.Buscar))

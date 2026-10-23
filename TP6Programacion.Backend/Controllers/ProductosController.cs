@@ -60,6 +60,7 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<ActionResult<PaginadoResponseDto<ProductoListadoResponse>>> ObtenerTodos(
             [FromQuery] ParametroPaginacionProductoRequest parametros)
         {
@@ -79,7 +80,29 @@ namespace TP6Programacion.Backend.Controllers
             }
         }
 
+        [HttpGet("catalogo")]
+        public async Task<ActionResult<PaginadoResponseDto<ProductoCatalogoResponse>>> ObtenerCatalogo(
+            [FromQuery] ParametroPaginacionProductoRequest parametros)
+        {
+            string baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+            PaginadoResponse<ProductoCatalogoResponse> resultado =
+                await _productoService.ObtenerCatalogo(parametros, baseUrl);
+
+            var respuesta = new PaginadoResponseDto<ProductoCatalogoResponse>(
+                resultado.NumeroPagina,
+                resultado.TamanoPagina,
+                resultado.TotalRegistros,
+                resultado.TotalPaginas,
+                resultado.TienePaginaAnterior,
+                resultado.TienePaginaPosterior,
+                resultado.Datos);
+
+            return Ok(respuesta);
+        }
+
         [HttpGet("{id}")]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<ActionResult<ProductoResponse>> ObtenerPorId(int id)
         {
             try

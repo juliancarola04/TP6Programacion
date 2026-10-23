@@ -25,6 +25,7 @@ public static class MauiProgram
             BaseAddress = new Uri(ConfiguracionApi.BaseUrl)
         });
         builder.Services.AddScoped<AutenticacionService>();
+        builder.Services.AddScoped<CatalogoService>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

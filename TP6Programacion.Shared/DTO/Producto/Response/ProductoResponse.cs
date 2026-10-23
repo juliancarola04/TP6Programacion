@@ -25,3 +25,12 @@ public record ProductoImagenResponse(
     string TipoContenido,
     long TamanoBytes,
     DateTime FechaCreacion);
+
+public record ProductoCatalogoResponse(
+    int Id,
+    string Nombre,
+    decimal PrecioVenta,
+    int Stock,
+    int CategoriaId,
+    string? CategoriaNombre,
+    ProductoImagenResponse? Imagen);

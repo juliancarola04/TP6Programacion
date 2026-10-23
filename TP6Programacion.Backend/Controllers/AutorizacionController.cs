@@ -18,21 +18,23 @@ namespace TP6Programacion.Backend.Controllers
         private readonly RegisterService _registerService;
         private readonly SesionService _sesionService;
         private readonly UsuarioService _usuarioService;
+        private readonly IAntiforgery _antiforgery;
 
-        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService, UsuarioService usuarioService)
+        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService, UsuarioService usuarioService, IAntiforgery antiforgery)
         {
             _loginService = loginService;
             _registerService = registerService;
             _sesionService = sesionService;
             _usuarioService = usuarioService;
+            _antiforgery = antiforgery;
         }
 
         // Mirá Program.cs en la parte de Forgery para entender lo que estoy haciendo acá.
         [HttpGet("web/csrf")]
         [AllowAnonymous]
-        public IActionResult ObtenerTokenCsrf([FromServices] IAntiforgery antiforgery)
+        public IActionResult ObtenerTokenCsrf()
         {
-            var tokens = antiforgery.GetAndStoreTokens(HttpContext);
+            var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
 
             return Ok(new { token = tokens.RequestToken });
         }

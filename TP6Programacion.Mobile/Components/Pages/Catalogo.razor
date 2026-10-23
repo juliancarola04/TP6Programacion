@@ -1,0 +1,193 @@
+@page "/catalogo"
+@using System.Globalization
+@using System.Net
+@using System.Text.Json
+@using TP6Programacion.Mobile.Services
+@using TP6Programacion.Shared.DTO.Paginado.Request.Producto
+@using TP6Programacion.Shared.DTO.Producto.Response
+@inject CatalogoService CatalogoService
+@inject NavigationManager Navigation
+
+<PageTitle>Catálogo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudTextField T="string"
+                          @bind-Value="_buscar"
+                          Label="Buscar productos"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Disabled="_cargando"
+                          OnKeyDown="BuscarConEnter"
+                          Class="flex-grow-1" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_cargando" OnClick="Buscar">
+                Buscar
+            </MudButton>
+        </MudStack>
+
+        @if (_cargando)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            <MudText>Cargando productos...</MudText>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+            <MudButton OnClick="CargarCatalogo" Color="Color.Primary">Reintentar</MudButton>
+        }
+        else if (_productos.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No se encontraron productos.</MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2">Productos encontrados: @_totalRegistros</MudText>
+
+            <MudGrid>
+                @foreach (var producto in _productos)
+                {
+                    <MudItem @key="producto.Id" xs="12" sm="6" md="4">
+                        <MudCard Style="height: 100%;">
+                            @if (producto.Imagen is not null)
+                            {
+                                <MudCardMedia Image="@producto.Imagen.Url" Height="180" />
+                            }
+                            else
+                            {
+                                <div class="d-flex align-center justify-center mud-background-gray" style="height: 180px;" aria-label="Producto sin imagen">
+                                    <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Large" />
+                                </div>
+                            }
+
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6">@producto.Nombre</MudText>
+                                <MudText Typo="Typo.body2">@(producto.CategoriaNombre ?? "Sin categoría")</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Primary" Class="mt-3">
+                                    @producto.PrecioVenta.ToString("C2", CultureInfo.GetCultureInfo("es-AR"))
+                                </MudText>
+
+                                @if (producto.Stock > 0)
+                                {
+                                    <MudText Typo="Typo.body2">Disponibles: @producto.Stock</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Error">Sin stock</MudText>
+                                }
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            @if (_totalPaginas > 1)
+            {
+                <MudPagination Count="_totalPaginas" Selected="_pagina" SelectedChanged="CambiarPagina" Color="Color.Primary" />
+            }
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<ProductoCatalogoResponse> _productos = new();
+    private string? _buscar;
+    private string? _busquedaAplicada;
+    private string? _error;
+    private bool _cargando;
+    private int _pagina = 1;
+    private int _totalPaginas;
+    private int _totalRegistros;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogo();
+    }
+
+    private async Task CargarCatalogo()
+    {
+        if (_cargando)
+        {
+            return;
+        }
+
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            var parametros = new ParametroPaginacionProductoRequest
+            {
+                NumeroPagina = _pagina,
+                TamanoPagina = 12,
+                Buscar = _busquedaAplicada,
+                OrdenarPor = "nombre",
+                Direccion = "asc"
+            };
+
+            var resultado = await CatalogoService.ObtenerCatalogo(parametros);
+
+            _productos = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+            _totalRegistros = resultado.TotalRegistros;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                _error = "No se pudo cargar el catálogo. Intentá nuevamente.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (JsonException)
+        {
+            _error = "El servidor devolvió una respuesta de catálogo inválida.";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Buscar()
+    {
+        if (_cargando)
+        {
+            return;
+        }
+
+        _busquedaAplicada = _buscar?.Trim();
+        _pagina = 1;
+        await CargarCatalogo();
+    }
+
+    private async Task BuscarConEnter(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await Buscar();
+        }
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        if (_cargando)
+        {
+            return;
+        }
+
+        _pagina = pagina;
+        await CargarCatalogo();
+    }
+}
