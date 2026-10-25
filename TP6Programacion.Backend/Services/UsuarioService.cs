@@ -4,7 +4,6 @@ using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Usuario;
 using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Backend.Utilidades;
-using TP6Programacion.Shared.DTO.Auth.Response;
 using TP6Programacion.Shared.DTO.Paginado.Request.Usuario;
 using TP6Programacion.Shared.DTO.Usuario.Request;
 using TP6Programacion.Shared.DTO.Usuario.Response;
@@ -21,16 +20,6 @@ namespace TP6Programacion.Backend.Services
         {
             _repo = repo;
             _tokenService = tokenService;
-        }
-
-        public async Task<UsuarioActualResponse> ObtenerActual(int id)
-        {
-            var usuario = await _repo.BuscarPorId(id);
-
-            if (usuario is null || usuario.Eliminado)
-                throw new SesionInvalidaException();
-
-            return new UsuarioActualResponse(usuario.Id, usuario.Username, usuario.Email, usuario.Rol);
         }
 
         public async Task CambiarRol(int id, Rol rol)

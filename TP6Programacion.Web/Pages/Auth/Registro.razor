@@ -1,11 +1,9 @@
 @page "/registro"
 @layout AutenticacionLayout
 @using TP6Programacion.Shared.DTO.Auth.Request
-@using TP6Programacion.Shared.DTO.Auth.Response
 @using TP6Programacion.Shared.ViewModels.Auth
 @using TP6Programacion.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>Registrarse</PageTitle>
@@ -95,11 +93,6 @@
             RegisterRequest request = new RegisterRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email);
 
             await AutenticacionService.Registrarse(request);
-
-            SesionUsuarioService.Limpiar();
-
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
 
             Navigation.NavigateTo("/");
         }

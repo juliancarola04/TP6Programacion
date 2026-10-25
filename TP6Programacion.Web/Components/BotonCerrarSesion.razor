@@ -1,6 +1,5 @@
 @using TP6Programacion.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <MudStack Spacing="2">
@@ -36,8 +35,6 @@
         try
         {
             await AutenticacionService.CerrarSesion();
-
-            SesionUsuarioService.Limpiar();
 
             Navigation.NavigateTo("/login");
         }

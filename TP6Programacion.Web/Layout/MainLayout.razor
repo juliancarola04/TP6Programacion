@@ -1,10 +1,9 @@
+@using TP6Programacion.Shared.Auth
 @using TP6Programacion.Web.Components
 @inherits LayoutComponentBase
 @using System.Net
-@using TP6Programacion.Shared.DTO.Auth.Response
 @using TP6Programacion.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <MudThemeProvider />
@@ -28,7 +27,7 @@ else if (!string.IsNullOrWhiteSpace(_error))
         </MudButton>
     </MudStack>
 }
-else if (SesionUsuarioService.UsuarioActual is not null)
+else if (_usuario is not null)
 {
     <div class="page">
         <div class="sidebar">
@@ -37,7 +36,7 @@ else if (SesionUsuarioService.UsuarioActual is not null)
 
         <main>
             <div class="top-row px-4">
-                <span>@SesionUsuarioService.UsuarioActual.Username (@SesionUsuarioService.UsuarioActual.Rol)</span>
+                <span>@_usuario.Username (@_usuario.Rol)</span>
                 <BotonCerrarSesion />
             </div>
 
@@ -49,6 +48,7 @@ else if (SesionUsuarioService.UsuarioActual is not null)
 }
 
 @code {
+    private UsuarioSesion? _usuario;
     private bool _cargando = true;
     private string? _error;
 
@@ -61,17 +61,16 @@ else if (SesionUsuarioService.UsuarioActual is not null)
     {
         _cargando = true;
         _error = null;
+        _usuario = null;
 
         try
         {
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
+            _usuario = await AutenticacionService.ObtenerUsuarioSesion();
         }
         catch (HttpRequestException e)
         {
             if (e.StatusCode == HttpStatusCode.Unauthorized)
             {
-                SesionUsuarioService.Limpiar();
                 Navigation.NavigateTo("/login");
             }
             else

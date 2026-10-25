@@ -1,3 +1,4 @@
+using TP6Programacion.Shared.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TP6Programacion.Shared.DTO.Auth.Request;
@@ -16,21 +17,32 @@ public class AutenticacionService
         _almacenamientoTokensService = almacenamientoTokensService;
     }
 
-    public async Task<UsuarioActualResponse> ObtenerUsuarioActual()
+    public async Task<UsuarioSesion> ObtenerUsuarioSesion()
     {
-        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
-        respuesta.EnsureSuccessStatusCode();
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
 
-        UsuarioActualResponse? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioActualResponse>();
-
-        if (usuario is null)
+        try
         {
-            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
+            var datos = LectorToken.Leer(sesion?.Token);
+
+            if (datos.Expira <= DateTimeOffset.UtcNow)
+            {
+                await RenovarSesion();
+                sesion = await _almacenamientoTokensService.Obtener();
+                datos = LectorToken.Leer(sesion?.Token);
+
+                if (datos.Expira <= DateTimeOffset.UtcNow)
+                    throw new FormatException("El JWT renovado ya está vencido.");
+            }
+
+            return datos.Usuario;
         }
-
-        return usuario;
+        catch (FormatException)
+        {
+            _almacenamientoTokensService.Limpiar();
+            throw new HttpRequestException("No hay una sesión válida guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+        }
     }
-
     private async Task RenovarSesion()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();

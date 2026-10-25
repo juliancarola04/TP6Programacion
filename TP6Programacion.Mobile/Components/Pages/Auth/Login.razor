@@ -1,3 +1,4 @@
+@using TP6Programacion.Shared.Auth
 @page "/login"
 @layout AutenticacionLayout
 @using TP6Programacion.Shared.DTO.Auth.Request
@@ -89,7 +90,7 @@
 
             await AutenticacionService.IniciarSesion(request);
 
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
+            UsuarioSesion usuario = await AutenticacionService.ObtenerUsuarioSesion();
             _modelo.Contrasena = string.Empty;
 
             Navigation.NavigateTo("/");

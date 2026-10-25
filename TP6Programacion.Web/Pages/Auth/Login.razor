@@ -2,10 +2,8 @@
 @layout AutenticacionLayout
 @using TP6Programacion.Shared.ViewModels.Auth
 @using TP6Programacion.Shared.DTO.Auth.Request
-@using TP6Programacion.Shared.DTO.Auth.Response
 @using TP6Programacion.Web.Services
 @inject AutenticacionService AutenticacionService
-@inject SesionUsuarioService SesionUsuarioService
 @inject NavigationManager Navigation
 
 <PageTitle>Iniciar sesión</PageTitle>
@@ -88,11 +86,6 @@
             LoginRequest request = new LoginRequest(_modelo.Usuario, _modelo.Contrasena);
 
             await AutenticacionService.IniciarSesion(request);
-
-            SesionUsuarioService.Limpiar();
-
-            UsuarioActualResponse usuario = await AutenticacionService.ObtenerUsuarioActual();
-            SesionUsuarioService.EstablecerUsuario(usuario);
 
             Navigation.NavigateTo("/");
         }

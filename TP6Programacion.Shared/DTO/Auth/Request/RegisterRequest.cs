@@ -1,6 +1,7 @@
-﻿namespace TP6Programacion.Shared.DTO.Auth.Request;
+namespace TP6Programacion.Shared.DTO.Auth.Request;
 
 public record RegisterRequest(
     string Username,
     string Password,
-    string Email);
+    string Email,
+    bool EsWeb = false);

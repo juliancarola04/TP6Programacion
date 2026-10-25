@@ -14,9 +14,7 @@ public class RegisterService(
     ITokenService tokenService,
     ISesionUsuarioRepository sesionRepository)
 {
-    public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, Rol.Cliente);
-
-    public Task<RegisterResponse> RegistrarseCajero(RegisterRequest request) => CrearCuenta(request, Rol.Cajero);
+    public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, request.EsWeb ? Rol.Cajero : Rol.Cliente);
 
     private async Task<RegisterResponse> CrearCuenta(RegisterRequest request, Rol rol)
     {

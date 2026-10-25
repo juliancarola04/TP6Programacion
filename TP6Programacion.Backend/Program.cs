@@ -1,4 +1,3 @@
-using TP6Programacion.Backend.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
@@ -15,19 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddControllersWithViews(options =>
-{
-    options.Filters.Add<CookieCsrfFilter>();
-});
 
-// Atención a esto, Sol. Esto es útil para evitar este problema https://www.youtube.com/watch?v=80S8h5hEwTY. 
-builder.Services.AddAntiforgery(options =>
-{
-    options.HeaderName = "X-CSRF-TOKEN";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Lax;
-});
+builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
@@ -37,8 +25,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://tpprogramacion.runasp.net")
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+                .AllowAnyMethod();
         });
     }
     else if (builder.Environment.IsDevelopment())
@@ -47,8 +34,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins("https://localhost:7248")
                 .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+                .AllowAnyMethod();
         });
     }
 });
@@ -83,20 +69,6 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
-            OnMessageReceived = context =>
-            {
-                /* Atención a esto, Sol. Como este backend va a ser utilizado tanto para mobile como web vamos a tener que hacer ciertas consideraciones.
-                Cuando nos logeemos en web vamos a almacenar el JWT en una cookie HttpOnly y, sumado a eso, se va a guardar un token CSRF. Ambos serán
-                utilizados para validar que la persona que se intenta registrar es efectivamente la persona que es.
-                Cuando nos logeemos en mobile vamos a almacenar el JWT en SecureStorage y será utilizado como autenticación a la hora de contactar a los endpoints,
-                pero no va a tener una cookie como lo teníamos en web.*/
-                if (!context.Request.Headers.ContainsKey("Authorization"))
-                {
-                    context.Token = context.Request.Cookies["access_token"];
-                }
-
-                return Task.CompletedTask;
-            },
             OnTokenValidated = async context =>
             {
                 var id = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;

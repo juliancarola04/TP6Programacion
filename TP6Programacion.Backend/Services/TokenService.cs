@@ -25,6 +25,7 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
         {
             new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, usuario.Email),
+            new("username", usuario.Username),
             new(ClaimTypes.Role, usuario.Rol.ToString())
         };
 

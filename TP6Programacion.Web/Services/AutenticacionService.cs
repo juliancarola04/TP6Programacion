@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
+using TP6Programacion.Shared.Auth;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TP6Programacion.Shared.DTO.Auth.Request;
 using TP6Programacion.Shared.DTO.Auth.Response;
@@ -8,81 +9,103 @@ namespace TP6Programacion.Web.Services;
 public class AutenticacionService
 {
     private readonly HttpClient _httpClient;
+    private readonly AlmacenamientoTokensService _almacenamientoTokensService;
 
-    public AutenticacionService(HttpClient httpClient)
+    public AutenticacionService(HttpClient httpClient, AlmacenamientoTokensService almacenamientoTokensService)
     {
         _httpClient = httpClient;
+        _almacenamientoTokensService = almacenamientoTokensService;
     }
 
-    public async Task IniciarSesion(LoginRequest request)
+    public async Task<UsuarioSesion> ObtenerUsuarioSesion()
     {
-        await EnviarConCsrf(HttpMethod.Post, "api/auth/web/login", JsonContent.Create(request), "No se pudo iniciar sesión.");
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        try
+        {
+            var datos = LectorToken.Leer(sesion?.Token);
+
+            if (datos.Expira <= DateTimeOffset.UtcNow)
+            {
+                await RenovarSesion();
+                sesion = await _almacenamientoTokensService.Obtener();
+                datos = LectorToken.Leer(sesion?.Token);
+
+                if (datos.Expira <= DateTimeOffset.UtcNow)
+                    throw new FormatException("El JWT renovado ya está vencido.");
+            }
+
+            return datos.Usuario;
+        }
+        catch (FormatException)
+        {
+            await _almacenamientoTokensService.Limpiar();
+            throw new HttpRequestException("No hay una sesión válida guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+        }
+    }
+    private async Task RenovarSesion()
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (sesion is null || string.IsNullOrWhiteSpace(sesion.RefreshToken))
+        {
+            throw new HttpRequestException("No hay una sesión guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+        }
+
+        RefreshRequest request = new RefreshRequest(sesion.RefreshToken);
+
+        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/refresh", request);
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            await _almacenamientoTokensService.Limpiar();
+        }
+
+        respuesta.EnsureSuccessStatusCode();
+
+        LoginResponse? nuevaSesion = await respuesta.Content.ReadFromJsonAsync<LoginResponse>();
+
+        if (nuevaSesion is null || string.IsNullOrWhiteSpace(nuevaSesion.Token) || string.IsNullOrWhiteSpace(nuevaSesion.RefreshToken))
+        {
+            throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
+        }
+
+        await _almacenamientoTokensService.Guardar(nuevaSesion);
+    }
+
+    private async Task<HttpResponseMessage> EnviarConToken(Func<HttpRequestMessage> crearSolicitud)
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token))
+        {
+            throw new HttpRequestException("No hay una sesión guardada.", null, System.Net.HttpStatusCode.Unauthorized);
+        }
+
+        using HttpRequestMessage solicitud = crearSolicitud();
+        solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", sesion.Token);
+
+        return await _httpClient.SendAsync(solicitud);
+    }
+
+    public async Task<HttpResponseMessage> EnviarAutenticado(Func<HttpRequestMessage> crearSolicitud)
+    {
+        HttpResponseMessage respuesta = await EnviarConToken(crearSolicitud);
+
+        if (respuesta.StatusCode != System.Net.HttpStatusCode.Unauthorized)
+        {
+            return respuesta;
+        }
+
+        respuesta.Dispose();
+
+        await RenovarSesion();
+
+        return await EnviarConToken(crearSolicitud);
     }
 
     public async Task Registrarse(RegisterRequest request)
     {
-        await EnviarConCsrf(HttpMethod.Post, "api/auth/web/register", JsonContent.Create(request), "No se pudo crear la cuenta.");
-    }
-
-    public async Task<UsuarioActualResponse> ObtenerUsuarioActual()
-    {
-        try
-        {
-            return await ConsultarUsuarioActual();
-        }
-        catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            await RenovarSesion();
-
-            return await ConsultarUsuarioActual();
-        }
-    }
-
-    private async Task<UsuarioActualResponse> ConsultarUsuarioActual()
-    {
-        using HttpRequestMessage solicitud = new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual");
-        solicitud.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-
-        using HttpResponseMessage respuesta = await _httpClient.SendAsync(solicitud);
-        respuesta.EnsureSuccessStatusCode();
-
-        UsuarioActualResponse? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioActualResponse>();
-
-        if (usuario is null)
-        {
-            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
-        }
-
-        return usuario;
-    }
-
-    public async Task CerrarSesion()
-    {
-        await EnviarConCsrf(HttpMethod.Post, "api/auth/web/logout", null, "No se pudo cerrar la sesión.");
-    }
-
-    private async Task RenovarSesion()
-    {
-        await EnviarConCsrf(HttpMethod.Post, "api/auth/web/refresh", null, "No se pudo renovar la sesión.", true);
-    }
-
-    private async Task EnviarConCsrf(
-        HttpMethod metodo, string ruta, HttpContent? contenido, string mensajeError, bool requiereSesion = false)
-    {
-        using HttpRequestMessage solicitud = new HttpRequestMessage(metodo, ruta);
-        solicitud.Content = contenido;
-
-        string tokenCsrf = await ObtenerTokenCsrf();
-
-        solicitud.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
-        solicitud.Headers.Add("X-CSRF-TOKEN", tokenCsrf);
-
-        using HttpResponseMessage respuesta = await _httpClient.SendAsync(solicitud);
-
-        if (requiereSesion && respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-        {
-            respuesta.EnsureSuccessStatusCode();
-        }
+        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/register", request with { EsWeb = true });
 
         if (!respuesta.IsSuccessStatusCode)
         {
@@ -90,31 +113,73 @@ public class AutenticacionService
 
             if (string.IsNullOrWhiteSpace(mensaje))
             {
-                mensaje = mensajeError;
+                mensaje = "No se pudo crear la cuenta.";
             }
 
             throw new InvalidOperationException(mensaje);
         }
-    }
 
-    private async Task<string> ObtenerTokenCsrf()
-    {
-        using HttpRequestMessage solicitudCsrf = new HttpRequestMessage(HttpMethod.Get, "api/auth/web/csrf");
-        solicitudCsrf.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        RegisterResponse? registro = await respuesta.Content.ReadFromJsonAsync<RegisterResponse>();
 
-        // Acá sería donde volvería el JSON que desp lo vamos a usar
-        using HttpResponseMessage respuestaCsrf = await _httpClient.SendAsync(solicitudCsrf);
-        respuestaCsrf.EnsureSuccessStatusCode();
-
-        CsrfResponse? csrf = await respuestaCsrf.Content.ReadFromJsonAsync<CsrfResponse>();
-
-        if (csrf is null || string.IsNullOrWhiteSpace(csrf.Token))
+        if (registro is null || string.IsNullOrWhiteSpace(registro.Token) || string.IsNullOrWhiteSpace(registro.RefreshToken))
         {
-            throw new InvalidOperationException("Falló el generar el token CSRF.");
+            throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
         }
 
-        return csrf.Token;
+        LoginResponse sesion = new LoginResponse(registro.Token, registro.RefreshToken, registro.SesionExpira);
+
+        await _almacenamientoTokensService.Guardar(sesion);
     }
 
-    private record CsrfResponse(string Token);
+    public async Task CerrarSesion()
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (!string.IsNullOrWhiteSpace(sesion?.RefreshToken))
+        {
+            LogoutRequest request = new LogoutRequest(sesion.RefreshToken);
+
+            using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/logout", request);
+
+            if (!respuesta.IsSuccessStatusCode)
+            {
+                string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrWhiteSpace(mensaje))
+                {
+                    mensaje = "No se pudo cerrar la sesión.";
+                }
+
+                throw new InvalidOperationException(mensaje);
+            }
+        }
+
+        await _almacenamientoTokensService.Limpiar();
+    }
+
+    public async Task IniciarSesion(LoginRequest request)
+    {
+        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/login", request);
+
+        if (!respuesta.IsSuccessStatusCode)
+        {
+            string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(mensaje))
+            {
+                mensaje = "No se pudo iniciar sesión.";
+            }
+
+            throw new InvalidOperationException(mensaje);
+        }
+
+        LoginResponse? sesion = await respuesta.Content.ReadFromJsonAsync<LoginResponse>();
+
+        if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token) || string.IsNullOrWhiteSpace(sesion.RefreshToken))
+        {
+            throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
+        }
+
+        await _almacenamientoTokensService.Guardar(sesion);
+    }
 }
