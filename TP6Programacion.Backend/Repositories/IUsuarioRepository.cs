@@ -13,5 +13,6 @@ namespace TP6Programacion.Backend.Repositories
         Task DarDeBaja(Usuario usuario);
         Task<PaginadoResponse<Usuario>> ObtenerTodos(UsuarioQueryParametros usuarioQueryParametros);
         Task Actualizar(Usuario usuario);
+        Task<int>ContarAdministradores();
     }
 }

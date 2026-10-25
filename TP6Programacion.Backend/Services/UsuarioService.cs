@@ -32,11 +32,19 @@ namespace TP6Programacion.Backend.Services
             if (usuario is null)
                 throw new RecursoNoExisteException("No existe ningún usuario con ese ID.");
 
+            if (usuario.Rol == Rol.Administrador && rol != Rol.Administrador)
+            {
+                int cantidadAdministradores = await _repo.ContarAdministradores();
+
+                if (cantidadAdministradores <= 1)
+                    throw new DatosLlegaronErradosException(
+                        "No se puede quitar el rol de administrador al último administrador del sistema.");
+            }
             usuario.Rol = rol;
             await _repo.Actualizar(usuario);
         }
-        public Task ConvertirEnAdministrador(int id) => CambiarRol(id, Rol.Administrador);
         public Task QuitarAdministrador(int id) => CambiarRol(id, Rol.Cajero);
+        public Task ConvertirEnAdministrador(int id) => CambiarRol(id, Rol.Administrador);
 
         /* public async Task ConvertirEnAdministrador(int id)
          {

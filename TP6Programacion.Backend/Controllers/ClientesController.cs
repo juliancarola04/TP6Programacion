@@ -24,6 +24,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<PaginadoResponseDto<ClienteResponse>>> ObtenerTodos(
         [FromQuery] ParametroPaginacionClienteRequest parametros)
     {
@@ -44,6 +45,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<ClienteResponse>> ObtenerPorId(int id)
     {
         try
@@ -61,7 +63,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<ClienteResponse>> Crear(CrearClienteRequest dto)
     {
         try
@@ -84,7 +86,7 @@ public class ClientesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Cajero")] //los cajeros pueden dar de alta y modificar clientes
     public async Task<IActionResult> Actualizar(int id, ActualizarClienteRequest dto)
     {
         try

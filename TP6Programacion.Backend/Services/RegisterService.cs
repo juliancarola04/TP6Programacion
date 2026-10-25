@@ -14,28 +14,35 @@ public class RegisterService(
     ITokenService tokenService,
     ISesionUsuarioRepository sesionRepository)
 {
-    public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, request.EsWeb ? Rol.Cajero : Rol.Cliente);
+    public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, Rol.Cliente);
+    // todo el que se registra es cliente hasta que lo de de alta un admin.
 
-    private async Task<RegisterResponse> CrearCuenta(RegisterRequest request, Rol rol)
+    //separo la creacion de usuario de la creacion de sesion (un empleado dado de alto por un admin no usa tokens)
+    private async Task<Usuario> CrearUsuario(string username, string password, string email, Rol rol)
     {
-        if (!Validaciones.EstanDatosBien(request.Username, request.Password, request.Email))
-            throw new DatosLlegaronErradosException("Alguno de los datos llegó vacío.");
+        if (!Validaciones.EstanDatosBien(username, password, email))
+            throw new DatosLlegaronErradosException(
+                "Alguno de los datos llegó vacío.");
 
-        string username = request.Username.Trim();
-        string password = request.Password.Trim();
-        string email = request.Email.Trim();
+        username = username.Trim();
+        password = password.Trim();
+        email = email.Trim();
 
         if (username.Length > 30 || email.Length > 320)
-            throw new DatosLlegaronErradosException("El usuario admite hasta 30 caracteres y el e-mail hasta 320.");
+            throw new DatosLlegaronErradosException(
+                "El usuario admite hasta 30 caracteres y el e-mail hasta 320.");
 
         if (!Validaciones.EsUnEmailValido(email))
-            throw new DatosLlegaronErradosException("El formato del E-Mail es inválido.");
+            throw new DatosLlegaronErradosException(
+                "El formato del E-Mail es inválido.");
 
         if (await usuarioRepository.ExistePorUsername(username))
-            throw new RecursoExistenteException("Ya existe alguien con ese usuario.");
+            throw new RecursoExistenteException(
+                "Ya existe alguien con ese usuario.");
 
         if (await usuarioRepository.ExistePorEmail(email))
-            throw new RecursoExistenteException("Ya existe alguien con ese email.");
+            throw new RecursoExistenteException(
+                "Ya existe alguien con ese email.");
 
         var usuario = new Usuario
         {
@@ -44,8 +51,14 @@ public class RegisterService(
             Email = email,
             Rol = rol
         };
+
         await repo.Registrarse(usuario);
 
+        return usuario;
+    }
+    private async Task<RegisterResponse> CrearCuenta(RegisterRequest request, Rol rol)
+    {
+        Usuario usuario = await CrearUsuario(request.Username, request.Password, request.Email, rol);
         var (token, _) = tokenService.CrearToken(usuario);
         var refreshToken = tokenService.CrearRefreshToken();
         var sesion = new SesionUsuario
@@ -56,5 +69,17 @@ public class RegisterService(
         };
         await sesionRepository.Crear(sesion);
         return new RegisterResponse(token, refreshToken, sesion.Expira);
+    }
+    public async Task CrearEmpleado(CrearEmpleadoRequest request)
+    {
+        if (request.Rol is not (Rol.Cajero or Rol.Administrador))
+            throw new DatosLlegaronErradosException(
+                "El rol debe ser Cajero o Administrador.");
+
+        await CrearUsuario(
+            request.Username,
+            request.Password,
+            request.Email,
+            request.Rol);
     }
 }

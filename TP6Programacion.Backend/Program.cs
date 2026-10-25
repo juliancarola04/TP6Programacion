@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Data.Common;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -9,134 +11,235 @@ using TP6Programacion.Backend.Implementacion;
 using TP6Programacion.Backend.Options;
 using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Backend.Services;
-var builder = WebApplication.CreateBuilder(args);
+using TP6Programacion.Backend.Utilidades;
+using Serilog;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+var bootstrapLogger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-builder.Services.AddControllers();
+Log.Logger = bootstrapLogger;
 
-builder.Services.AddCors(options =>
+try
 {
-    if (builder.Environment.IsProduction())
-    {
-        options.AddPolicy("Web", policy =>
+    Log.Information("Iniciando aplicación TP6Programacion.Backend...");
+    var builder = WebApplication.CreateBuilder(args);
+        builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext());
+
+        // Add services to the container.
+        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+        builder.Services.AddOpenApi();
+
+        builder.Services.AddControllers();
+
+        builder.Services.AddCors(options =>
         {
-            policy.WithOrigins("https://tpprogramacion.runasp.net")
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-        });
-    }
-    else if (builder.Environment.IsDevelopment())
-    {
-        options.AddPolicy("Web", policy =>
-        {
-            policy.WithOrigins("https://localhost:7248")
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-        });
-    }
-});
-
-builder.Services.AddAuthorization();
-
-builder.Services.AddDbContext<DataContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        var jwt = builder.Configuration
-            .GetRequiredSection("JwtSettings")
-            .Get<JwtSettings>()!;
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwt.Issuer,
-            ValidAudience = jwt.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
-            NameClaimType = ClaimTypes.Email,
-            RoleClaimType = ClaimTypes.Role,
-            ClockSkew = TimeSpan.Zero
-        };
-
-        options.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = async context =>
+            if (builder.Environment.IsProduction())
             {
-                var id = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (!int.TryParse(id, out var usuarioId))
+                options.AddPolicy("Web", policy =>
                 {
-                    context.Fail("El identificador del usuario no es válido.");
-                    return;
-                }
-
-                var repository = context.HttpContext.RequestServices
-                    .GetRequiredService<IUsuarioRepository>();
-
-                var usuario = await repository.BuscarPorId(usuarioId);
-
-                if (usuario is null || usuario.Eliminado)
-                {
-                    context.Fail("La cuenta no está habilitada.");
-                }
+                    policy.WithOrigins("https://tpprogramacion.runasp.net")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
             }
-        };
-    });
+            else if (builder.Environment.IsDevelopment())
+            {
+                options.AddPolicy("Web", policy =>
+                {
+                    policy.WithOrigins("https://localhost:7248")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            }
+        });
 
-builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
-builder.Services.AddScoped<IClienteRepository, ClienteRepositoryPsqlEF>();
-builder.Services.AddScoped<IImagenRepository, ImagenRepositoryPsqlEF>();
-builder.Services.AddScoped<IIngresoRepository, IngresoRepositoryPsqlEF>();
-builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
-builder.Services.AddScoped<IProveedorRepository, ProveedorRepositoryPsqlEF>();
-builder.Services.AddScoped<IRegisterRepository, RegisterRepositoryPsqlEF>();
-builder.Services.AddScoped<ISesionUsuarioRepository, SesionUsuarioRepositoryPsqlEF>();
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
-builder.Services.AddScoped<IVentaRepository, VentaRepositoryPsqlEF>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+        builder.Services.AddAuthorization();
 
-builder.Services.AddScoped<CategoriaService>();
-builder.Services.AddScoped<ClienteService>();
-builder.Services.AddScoped<ImagenService>();
-builder.Services.AddScoped<IngresoService>();
-builder.Services.AddScoped<LoginService>();
-builder.Services.AddScoped<SesionService>();
-builder.Services.AddScoped<ProductoService>();
-builder.Services.AddScoped<ProveedorService>();
-builder.Services.AddScoped<RegisterService>();
-builder.Services.AddScoped<UsuarioService>();
-builder.Services.AddScoped<VentaService>();
+        builder.Services.AddDbContext<DataContext>(options =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-var app = builder.Build();
+        builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+        builder.Services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                var jwt = builder.Configuration
+                    .GetRequiredSection("JwtSettings")
+                    .Get<JwtSettings>()!;
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwt.Issuer,
+                    ValidAudience = jwt.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+                    NameClaimType = ClaimTypes.Email,
+                    RoleClaimType = ClaimTypes.Role,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        int? usuarioId = context.Principal?.ObtenerUsuarioId();
+                        if (usuarioId is null)
+                        {
+                            context.Fail("El identificador del usuario no es válido.");
+                            return;
+                        }
+
+                        var repository = context.HttpContext.RequestServices
+                            .GetRequiredService<IUsuarioRepository>();
+
+                        var usuario = await repository.BuscarPorId(usuarioId.Value);
+
+                        if (usuario is null || usuario.Eliminado)
+                        {
+                            context.Fail("La cuenta no está habilitada.");
+                        }
+
+                        if (context.Principal?.Identity is ClaimsIdentity identity)
+                        {
+                            foreach (Claim claim in
+                            identity.FindAll(ClaimTypes.Role).ToList())
+                                identity.RemoveClaim(claim);
+                            identity.AddClaim(new Claim(ClaimTypes.Role, usuario.Rol.ToString()));
+                        }
+                    }
+                };
+            });
+
+        builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();
+        builder.Services.AddScoped<IClienteRepository, ClienteRepositoryPsqlEF>();
+        builder.Services.AddScoped<IImagenRepository, ImagenRepositoryPsqlEF>();
+        builder.Services.AddScoped<IIngresoRepository, IngresoRepositoryPsqlEF>();
+        builder.Services.AddScoped<IProductoRepository, ProductoRepositoryPsqlEF>();
+        builder.Services.AddScoped<IProveedorRepository, ProveedorRepositoryPsqlEF>();
+        builder.Services.AddScoped<IRegisterRepository, RegisterRepositoryPsqlEF>();
+        builder.Services.AddScoped<ISesionUsuarioRepository, SesionUsuarioRepositoryPsqlEF>();
+        builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
+        builder.Services.AddScoped<IVentaRepository, VentaRepositoryPsqlEF>();
+        builder.Services.AddScoped<ITokenService, TokenService>();
+
+        builder.Services.AddScoped<CategoriaService>();
+        builder.Services.AddScoped<ClienteService>();
+        builder.Services.AddScoped<ImagenService>();
+        builder.Services.AddScoped<IngresoService>();
+        builder.Services.AddScoped<LoginService>();
+        builder.Services.AddScoped<ProductoService>();
+        builder.Services.AddScoped<ProveedorService>();
+        builder.Services.AddScoped<RegisterService>();
+        builder.Services.AddScoped<SesionService>();
+        builder.Services.AddScoped<UsuarioService>();
+        builder.Services.AddScoped<VentaService>();
+
+        var app = builder.Build();
+
+        app.UseExceptionHandler(exceptionHandlerApp =>
+        {
+            exceptionHandlerApp.Run(async context =>
+            {
+                var exceptionFeature =
+                    context.Features.Get<IExceptionHandlerFeature>();
+
+                Exception? exception = exceptionFeature?.Error;
+
+                var logger = context.RequestServices
+                    .GetRequiredService<ILogger<Program>>();
+
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode =
+                    StatusCodes.Status500InternalServerError;
+
+                DbException? dbException =
+                    BuscarDbExceptionEnCadena(exception);
+
+                if (dbException is not null)
+                {
+                    logger.LogError(
+                        exception,
+                        "Error de base de datos al procesar {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+
+                    await context.Response.WriteAsJsonAsync(
+                        "Ocurrió un error interno en el servidor. Por favor, intentá nuevamente más tarde.");
+                }
+                else
+                {
+                    logger.LogError(
+                        exception,
+                        "Excepción no controlada al procesar {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+
+                    await context.Response.WriteAsJsonAsync(
+                        "Ocurrió un error interno en el servidor.");
+                }
+            });
+        });
+        static DbException? BuscarDbExceptionEnCadena(Exception? ex)
+        {
+            while (ex is not null)
+            {
+                if (ex is DbException dbEx)
+                    return dbEx;
+
+                ex = ex.InnerException;
+            }
+
+            return null;
+        }
+
+        app.UseSerilogRequestLogging(options =>
+        {
+            options.MessageTemplate =
+                "HTTP {RequestMethod} {RequestPath} respondió {StatusCode} en {Elapsed:0.0000} ms";
+        });
+
+        // Configure the HTTP request pipeline.
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+        }
+
+        app.UseHttpsRedirection();
+        app.UseCors("Web");
+        var imagenesPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads");
+        Directory.CreateDirectory(imagenesPath);
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(imagenesPath),
+            RequestPath = "/uploads"
+        });
+        app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        Log.Information("Aplicación iniciada correctamente.");
+
+        app.Run();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("Web");
-var imagenesPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads");
-Directory.CreateDirectory(imagenesPath);
-app.UseStaticFiles(new StaticFileOptions
+catch (Exception ex)
+
 {
-    FileProvider = new PhysicalFileProvider(imagenesPath),
-    RequestPath = "/uploads"
-});
-app.UseAuthentication();
-app.UseAuthorization();
+    Log.Fatal(ex,"Fallo crítico no controlado durante el inicio de la aplicación.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
-app.MapControllers();
 
-app.Run();
+
 
