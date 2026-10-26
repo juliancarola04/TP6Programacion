@@ -92,6 +92,8 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpDelete("dardebaja")]
+        [Authorize(Roles = "Administrador")]
+
         public async Task<ActionResult> DarDeBaja()
         {
             try
@@ -121,6 +123,7 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpPut("actualizar")]
+        [Authorize(Roles = "Administrador")]
         public async Task<ActionResult<ActualizarUsuarioResponse>> Actualizar([FromBody] ActualizarUsuarioRequest actualizarUsuarioRequest)
         {
             try

@@ -109,5 +109,18 @@ namespace TP6Programacion.Backend.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
+        [HttpPost("empleados")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> CrearEmpleado(CrearEmpleadoRequest request)
+        {
+            try
+            {
+                await _registerService.CrearEmpleado(request);
+                return NoContent();
+            }
+            catch (DatosLlegaronErradosException e) { return BadRequest(e.Message); }
+            catch (RecursoExistenteException e) { return Conflict(e.Message); }
+            catch (BaseDeDatosException e) { return StatusCode(StatusCodes.Status500InternalServerError, e.Message); }
+        }
     }
 }

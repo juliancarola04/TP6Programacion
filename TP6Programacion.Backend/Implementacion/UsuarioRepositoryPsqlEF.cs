@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using TP6Programacion.Backend.Data;
-using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Usuario;
-using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Models;
+using TP6Programacion.Backend.Models.ModeloAuxiliar;
+using TP6Programacion.Backend.Models.ModeloAuxiliar.Query.Usuario;
 using TP6Programacion.Backend.Repositories;
+using TP6Programacion.Shared.Enums;
 
 namespace TP6Programacion.Backend.Implementacion
 {
@@ -58,6 +59,10 @@ namespace TP6Programacion.Backend.Implementacion
                 .Take(usuarioQueryParametros.TamanoPagina).ToListAsync();
             
             return new PaginadoResponse<Usuario>(usuarios, usuarioQueryParametros.NumeroPagina, usuarioQueryParametros.TamanoPagina, totalRegistros);
+        }
+        public Task<int> ContarAdministradores()
+        {
+            return _dataContext.Usuarios.CountAsync(u => u.Rol == Rol.Administrador);
         }
 
         public async Task<bool> ExistePorUsername(string username)
