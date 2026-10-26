@@ -23,7 +23,6 @@
                           Variant="Variant.Outlined"
                           Immediate="true"
                           Disabled="_cargando"
-                          OnKeyDown="BuscarConEnter"
                           Class="flex-grow-1" />
 
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_cargando" OnClick="Buscar">
@@ -172,14 +171,6 @@
         _busquedaAplicada = _buscar?.Trim();
         _pagina = 1;
         await CargarCatalogo();
-    }
-
-    private async Task BuscarConEnter(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter")
-        {
-            await Buscar();
-        }
     }
 
     private async Task CambiarPagina(int pagina)

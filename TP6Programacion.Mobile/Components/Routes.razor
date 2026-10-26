@@ -1,4 +1,5 @@
 @inject TP6Programacion.Mobile.Services.EstadoAutenticacionProvider Estado
+@using TP6Programacion.Mobile.Components
 
 <Router AppAssembly="@typeof(MauiProgram).Assembly"
         NotFoundPage="typeof(Pages.NotFound)"
@@ -9,7 +10,7 @@
                             DefaultLayout="@typeof(MainLayout)">
             <NotAuthorized>
                 <p>No iniciaste sesión o no tenés permisos para esta página.</p>
-                <a href="/login">Ir al login</a>
+                <RedirectToLogin />
             </NotAuthorized>
 
             <Authorizing>
