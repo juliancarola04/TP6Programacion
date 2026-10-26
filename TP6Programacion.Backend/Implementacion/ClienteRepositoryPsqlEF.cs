@@ -42,7 +42,11 @@ public class ClienteRepositoryPsqlEF : IClienteRepository
 
         return new PaginadoResponse<Cliente>(clientes, parametros.NumeroPagina, parametros.TamanoPagina, totalRegistros);
     }
-
+    public async Task<Cliente?> ObtenerPorUsuarioId(int usuarioId)
+    {
+        return await _dataContext.Clientes
+            .FirstOrDefaultAsync(c => c.UsuarioId == usuarioId);
+    }
     public async Task<Cliente?> ObtenerPorId(int id)
     {
         return await _dataContext.Clientes

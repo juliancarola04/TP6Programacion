@@ -65,6 +65,15 @@ namespace TP6Programacion.Backend.Implementacion
             return await _dataContext.Ventas
                 .Include(v => v.DetallesVentas)
                     .ThenInclude(d => d.Producto)
+                .Include(v => v.Pagos)
+                .FirstOrDefaultAsync(v => v.Id == id);
+        }
+        public async Task<Venta?> ObtenerParaProcesarPago(int id)
+        {
+            return await _dataContext.Ventas
+                .Include(v => v.DetallesVentas)
+                    .ThenInclude(d => d.Producto)
+                .Include(v => v.Pagos)
                 .FirstOrDefaultAsync(v => v.Id == id);
         }
         public async Task Crear(Venta venta)

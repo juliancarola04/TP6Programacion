@@ -9,6 +9,7 @@ namespace TP6Programacion.Backend.Repositories
         Task<PaginadoResponse<Venta>> ObtenerTodas(VentaQueryParametros parametros);
         Task<Venta?> ObtenerPorId(int id);
         Task<Venta?> ObtenerParaAnular(int id);
+        Task<Venta?> ObtenerParaProcesarPago(int id);
         Task Crear(Venta venta);
         Task GuardarCambios();
     }

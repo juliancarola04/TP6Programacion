@@ -1,18 +1,19 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
-using System.Data.Common;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using System.Data.Common;
+using System.Security.Claims;
+using System.Text;
 using TP6Programacion.Backend.Data;
 using TP6Programacion.Backend.Implementacion;
 using TP6Programacion.Backend.Options;
+using TP6Programacion.Backend.PasarelaSimulada.Pagos;
 using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Backend.Services;
 using TP6Programacion.Backend.Utilidades;
-using Serilog;
 
 var bootstrapLogger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -35,29 +36,15 @@ try
 
         builder.Services.AddControllers();
 
-        builder.Services.AddCors(options =>
-        {
-            if (builder.Environment.IsProduction())
-            {
-                options.AddPolicy("Web", policy =>
-                {
-                    policy.WithOrigins("https://tpprogramacion.runasp.net")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                });
-            }
-            else if (builder.Environment.IsDevelopment())
-            {
-                options.AddPolicy("Web", policy =>
-                {
-                    policy.WithOrigins("https://localhost:7248")
-                        .AllowAnyHeader()
-                        .AllowAnyMethod();
-                });
-            }
-        });
+    string[] origenes = builder.Configuration.GetSection("Cors:Origenes").Get<string[]>() ?? [];
 
-        builder.Services.AddAuthorization();
+    builder.Services.AddCors(options =>
+        options.AddPolicy("Web", policy => policy
+            .WithOrigins(origenes)
+            .AllowAnyHeader()
+            .AllowAnyMethod()));
+
+    builder.Services.AddAuthorization();
 
         builder.Services.AddDbContext<DataContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -104,6 +91,7 @@ try
                         if (usuario is null || usuario.Eliminado)
                         {
                             context.Fail("La cuenta no está habilitada.");
+                            return;
                         }
 
                         if (context.Principal?.Identity is ClaimsIdentity identity)
@@ -128,6 +116,10 @@ try
         builder.Services.AddScoped<IUsuarioRepository, UsuarioRepositoryPsqlEF>();
         builder.Services.AddScoped<IVentaRepository, VentaRepositoryPsqlEF>();
         builder.Services.AddScoped<ITokenService, TokenService>();
+        builder.Services.AddScoped<IPasarelaPago, PasarelaPagoSimulada>();
+        builder.Services.AddScoped<IPagoRepository, PagoRepositoryPsqlEF>();
+        builder.Services.AddScoped<IPasarelaPago, PasarelaPagoSimulada>();
+
 
         builder.Services.AddScoped<CategoriaService>();
         builder.Services.AddScoped<ClienteService>();
@@ -136,6 +128,7 @@ try
         builder.Services.AddScoped<LoginService>();
         builder.Services.AddScoped<ProductoService>();
         builder.Services.AddScoped<ProveedorService>();
+        builder.Services.AddScoped<PagoService>();
         builder.Services.AddScoped<RegisterService>();
         builder.Services.AddScoped<SesionService>();
         builder.Services.AddScoped<UsuarioService>();

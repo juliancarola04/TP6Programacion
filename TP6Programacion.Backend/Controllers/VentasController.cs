@@ -21,6 +21,8 @@ public class VentasController : ControllerBase
         _ventaService = ventaService;
     }
     [HttpGet]
+    [Authorize(Roles = "Administrador,Cajero")]
+
     public async Task<ActionResult<PaginadoResponseDto<VentaListadoResponse>>> ObtenerTodas(
         [FromQuery] ParametroPaginacionVentaRequest parametros)
     {
@@ -40,6 +42,7 @@ public class VentasController : ControllerBase
         }
     }
     [HttpGet("{id}")]
+    [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<VentaResponse>> ObtenerPorId(int id)
     {
         try
@@ -56,7 +59,7 @@ public class VentasController : ControllerBase
         }
     }
     [HttpPost]
-    [Authorize(Roles = "Administrador")]
+    [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<VentaResponse>> Crear(CrearVentaRequest dto)
     {
         string? usuarioIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

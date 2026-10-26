@@ -24,6 +24,7 @@ public class IngresosController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<PaginadoResponseDto<IngresoListadoResponse>>> ObtenerTodos(
         [FromQuery] ParametroPaginacionIngresoRequest parametros)
     {
@@ -44,6 +45,7 @@ public class IngresosController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = "Administrador")]
     public async Task<ActionResult<IngresoResponse>> ObtenerPorId(int id)
     {
         try

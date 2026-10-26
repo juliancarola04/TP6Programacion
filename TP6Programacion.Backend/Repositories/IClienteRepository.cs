@@ -7,6 +7,7 @@ namespace TP6Programacion.Backend.Repositories
     public interface IClienteRepository
     {
         Task<PaginadoResponse<Cliente>> ObtenerTodos(ClienteQueryParametros parametros);
+        Task<Cliente?> ObtenerPorUsuarioId(int usuarioId);
         Task<Cliente?> ObtenerPorId(int id);
         Task<bool> ExistePorDni(string dni);
         Task<bool> ExistePorEmail(string email);

@@ -60,7 +60,7 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,Cajero")]
+        [Authorize(Roles = "Administrador")]
         public async Task<ActionResult<PaginadoResponseDto<ProductoListadoResponse>>> ObtenerTodos(
             [FromQuery] ParametroPaginacionProductoRequest parametros)
         {
@@ -102,7 +102,7 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Administrador,Cajero")]
+        [Authorize(Roles = "Administrador")]
         public async Task<ActionResult<ProductoResponse>> ObtenerPorId(int id)
         {
             try
