@@ -90,7 +90,6 @@
 
             await AutenticacionService.IniciarSesion(request);
 
-            UsuarioSesion usuario = await AutenticacionService.ObtenerUsuarioSesion();
             _modelo.Contrasena = string.Empty;
 
             Navigation.NavigateTo("/");

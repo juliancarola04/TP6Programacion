@@ -1,3 +1,4 @@
+using TP6Programacion.Shared.Enums;
 using TP6Programacion.Shared.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -19,30 +20,17 @@ public class AutenticacionService
 
     public async Task<UsuarioSesion> ObtenerUsuarioSesion()
     {
-        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
+        respuesta.EnsureSuccessStatusCode();
 
-        try
-        {
-            var datos = LectorToken.Leer(sesion?.Token);
+        UsuarioSesion? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioSesion>();
 
-            if (datos.Expira <= DateTimeOffset.UtcNow)
-            {
-                await RenovarSesion();
-                sesion = await _almacenamientoTokensService.Obtener();
-                datos = LectorToken.Leer(sesion?.Token);
+        if (usuario is null)
+            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
 
-                if (datos.Expira <= DateTimeOffset.UtcNow)
-                    throw new FormatException("El JWT renovado ya está vencido.");
-            }
-
-            return datos.Usuario;
-        }
-        catch (FormatException)
-        {
-            await _almacenamientoTokensService.Limpiar();
-            throw new HttpRequestException("No hay una sesión válida guardada.", null, System.Net.HttpStatusCode.Unauthorized);
-        }
+        return usuario;
     }
+
     private async Task RenovarSesion()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
@@ -181,5 +169,22 @@ public class AutenticacionService
         }
 
         await _almacenamientoTokensService.Guardar(sesion);
+
+        var usuario = await ObtenerUsuarioSesion();
+
+        if (usuario.Rol is not (Rol.Administrador or Rol.Cajero))
+        {
+            try
+            {
+                await CerrarSesion();
+            }
+            finally
+            {
+                await _almacenamientoTokensService.Limpiar();
+            }
+
+            throw new InvalidOperationException(
+                "Esta cuenta no tiene acceso al panel web.");
+        }
     }
 }

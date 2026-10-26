@@ -1,6 +1,31 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@inject TP6Programacion.Mobile.Services.EstadoAutenticacionProvider Estado
+
+<Router AppAssembly="@typeof(MauiProgram).Assembly"
+        NotFoundPage="typeof(Pages.NotFound)"
+        OnNavigateAsync="AlNavegar">
+
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <AuthorizeRouteView RouteData="@routeData"
+                            DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                <p>No iniciaste sesión o no tenés permisos para esta página.</p>
+                <a href="/login">Ir al login</a>
+            </NotAuthorized>
+
+            <Authorizing>
+                <p>Comprobando sesión...</p>
+            </Authorizing>
+        </AuthorizeRouteView>
+
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private async Task AlNavegar(Microsoft.AspNetCore.Components.Routing.NavigationContext contexto)
+    {
+        contexto.CancellationToken.ThrowIfCancellationRequested();
+        await Estado.Actualizar();
+        contexto.CancellationToken.ThrowIfCancellationRequested();
+    }
+}

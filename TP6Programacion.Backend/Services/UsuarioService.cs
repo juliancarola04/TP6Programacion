@@ -1,3 +1,4 @@
+using TP6Programacion.Shared.Auth;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
@@ -20,6 +21,16 @@ namespace TP6Programacion.Backend.Services
         {
             _repo = repo;
             _tokenService = tokenService;
+        }
+
+        public async Task<UsuarioSesion> ObtenerActual(int id)
+        {
+            Usuario? usuario = await _repo.BuscarPorId(id);
+
+            if (usuario is null || usuario.Eliminado)
+                throw new SesionInvalidaException();
+
+            return new UsuarioSesion(usuario.Id, usuario.Username, usuario.Email, usuario.Rol);
         }
 
         public async Task CambiarRol(int id, Rol rol)

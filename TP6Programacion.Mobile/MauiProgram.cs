@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using TP6Programacion.Mobile.Services;
@@ -45,6 +46,11 @@ public static class MauiProgram
             };
         });
         builder.Services.AddScoped<AutenticacionService>();
+        builder.Services.AddAuthorizationCore();
+        builder.Services.AddCascadingAuthenticationState();
+        builder.Services.AddScoped<EstadoAutenticacionProvider>();
+        builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+            sp.GetRequiredService<EstadoAutenticacionProvider>());
         builder.Services.AddScoped<CatalogoService>();
 
 #if DEBUG

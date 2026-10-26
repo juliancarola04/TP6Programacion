@@ -1,3 +1,5 @@
+using TP6Programacion.Shared.Auth;
+using TP6Programacion.Backend.Utilidades;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TP6Programacion.Backend.Excepciones;
@@ -14,12 +16,14 @@ namespace TP6Programacion.Backend.Controllers
         private readonly LoginService _loginService;
         private readonly RegisterService _registerService;
         private readonly SesionService _sesionService;
+        private readonly UsuarioService _usuarioService;
 
-        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService)
+        public AutorizacionController(LoginService loginService, RegisterService registerService, SesionService sesionService, UsuarioService usuarioService)
         {
             _loginService = loginService;
             _registerService = registerService;
             _sesionService = sesionService;
+            _usuarioService = usuarioService;
         }
 
         [HttpPost("login")]
@@ -84,6 +88,25 @@ namespace TP6Programacion.Backend.Controllers
             catch (BaseDeDatosException e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        [HttpGet("usuario-actual")]
+        [Authorize]
+        public async Task<ActionResult<UsuarioSesion>> ObtenerUsuarioActual()
+        {
+            int? usuarioId = User.ObtenerUsuarioId();
+
+            if (usuarioId is null)
+                return Unauthorized();
+
+            try
+            {
+                return Ok(await _usuarioService.ObtenerActual(usuarioId.Value));
+            }
+            catch (SesionInvalidaException e)
+            {
+                return Unauthorized(e.Message);
             }
         }
 

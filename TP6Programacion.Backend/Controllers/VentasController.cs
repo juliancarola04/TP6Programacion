@@ -58,7 +58,7 @@ public class VentasController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
         }
     }
-    [HttpPost]
+    /*[HttpPost]
     [Authorize(Roles = "Administrador,Cajero")]
     public async Task<ActionResult<VentaResponse>> Crear(CrearVentaRequest dto)
     {
@@ -86,7 +86,7 @@ public class VentasController : ControllerBase
         {
             return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
         }
-    }
+    }*/
     [HttpDelete("{id}")]
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Anular(int id)

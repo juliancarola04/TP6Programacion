@@ -1,90 +1,35 @@
-@using TP6Programacion.Shared.Auth
-@using TP6Programacion.Web.Components
 @inherits LayoutComponentBase
-@using System.Net
-@using TP6Programacion.Web.Services
-@inject AutenticacionService AutenticacionService
-@inject NavigationManager Navigation
+@using System.Security.Claims
+@using TP6Programacion.Web.Components
 
 <MudThemeProvider />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-@if (_cargando)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-}
-else if (!string.IsNullOrWhiteSpace(_error))
-{
-    <MudStack Spacing="3" Class="pa-6">
-        <MudAlert Severity="Severity.Error">
-            @_error
-        </MudAlert>
-
-        <MudButton OnClick="CargarSesion" Color="Color.Primary">
-            Reintentar
-        </MudButton>
-    </MudStack>
-}
-else if (_usuario is not null)
-{
-    <div class="page">
-        <div class="sidebar">
-            <NavMenu />
-        </div>
-
-        <main>
-            <div class="top-row px-4">
-                <span>@_usuario.Username (@_usuario.Rol)</span>
-                <BotonCerrarSesion />
+<AuthorizeView Context="estado">
+    <Authorized>
+        <div class="page">
+            <div class="sidebar">
+                <NavMenu />
             </div>
 
-            <article class="content px-4">
-                @Body
-            </article>
-        </main>
-    </div>
-}
+            <main>
+                <div class="top-row px-4">
+                    <span>@estado.User.Identity?.Name (@estado.User.FindFirst(ClaimTypes.Role)?.Value)</span>
+                    <BotonCerrarSesion />
+                </div>
 
-@code {
-    private UsuarioSesion? _usuario;
-    private bool _cargando = true;
-    private string? _error;
+                <article class="content px-4">
+                    @Body
+                </article>
+            </main>
+        </div>
+    </Authorized>
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarSesion();
-    }
-
-    private async Task CargarSesion()
-    {
-        _cargando = true;
-        _error = null;
-        _usuario = null;
-
-        try
-        {
-            _usuario = await AutenticacionService.ObtenerUsuarioSesion();
-        }
-        catch (HttpRequestException e)
-        {
-            if (e.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Navigation.NavigateTo("/login");
-            }
-            else
-            {
-                _error = "No se pudo recuperar la sesión. Intentá nuevamente.";
-            }
-        }
-        catch (InvalidOperationException e)
-        {
-            _error = e.Message;
-        }
-        finally
-        {
-            _cargando = false;
-        }
-    }
-}
+    <NotAuthorized>
+        <article class="content px-4">
+            @Body
+        </article>
+    </NotAuthorized>
+</AuthorizeView>

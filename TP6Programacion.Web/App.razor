@@ -1,6 +1,37 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@using TP6Programacion.Web.Components
+@inject TP6Programacion.Web.Services.EstadoAutenticacionProvider Estado
+
+<Router AppAssembly="@typeof(App).Assembly"
+        NotFoundPage="typeof(Pages.NotFound)"
+        OnNavigateAsync="AlNavegar">
+
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized Context="estado">
+                @if (estado.User.Identity?.IsAuthenticated == true)
+                {
+                    <p>No tenés permisos para esta página.</p>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+
+            <Authorizing>
+                <p>Comprobando sesión...</p>
+            </Authorizing>
+        </AuthorizeRouteView>
+
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    private async Task AlNavegar(Microsoft.AspNetCore.Components.Routing.NavigationContext contexto)
+    {
+        contexto.CancellationToken.ThrowIfCancellationRequested();
+        await Estado.Actualizar();
+        contexto.CancellationToken.ThrowIfCancellationRequested();
+    }
+}
