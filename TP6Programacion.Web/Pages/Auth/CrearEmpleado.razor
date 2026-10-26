@@ -1,0 +1,127 @@
+@page "/empleados/crear"
+@layout MainLayout
+@attribute [Authorize(Roles = "Administrador")]
+
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Auth.Request
+@using TP6Programacion.Shared.Enums
+@using TP6Programacion.Shared.ViewModels.Auth
+@using TP6Programacion.Web.Services
+
+@inject AutenticacionService AutenticacionService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Crear empleado</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5">Crear empleado</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        <MudForm @ref="_formulario"
+                 Model="_modelo"
+                 Disabled="_procesando"
+                 OnEnterPressed="GuardarEmpleado">
+            <MudStack Spacing="4">
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Usuario"
+                              Label="Usuario"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá el usuario."
+                              MaxLength="30" />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Contrasena"
+                              Label="Contraseña"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá la contraseña."
+                              InputType="InputType.Password" />
+
+                <MudTextField T="string"
+                              @bind-Value="_modelo.Email"
+                              Label="Correo"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Ingresá el correo."
+                              InputType="InputType.Email"
+                              MaxLength="320" />
+
+                <MudSelect T="Rol"
+                           @bind-Value="_rol"
+                           Label="Rol"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="Rol" Value="@Rol.Cajero">Cajero</MudSelectItem>
+                    <MudSelectItem T="Rol" Value="@Rol.Administrador">Administrador</MudSelectItem>
+                </MudSelect>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_procesando"
+                           OnClick="GuardarEmpleado">
+                    @(_procesando ? "Creando..." : "Crear empleado")
+                </MudButton>
+            </MudStack>
+        </MudForm>
+
+        <MudButton Href="/">Volver al inicio</MudButton>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private readonly RegistroViewModel _modelo = new();
+    private MudForm _formulario = null!;
+    private Rol _rol = Rol.Cajero;
+    private bool _procesando;
+    private string? _error;
+
+    private async Task GuardarEmpleado()
+    {
+        if (_procesando)
+            return;
+
+        _procesando = true;
+        _error = null;
+
+        try
+        {
+            await _formulario.ValidateAsync();
+
+            if (!_formulario.IsValid)
+                return;
+
+            CrearEmpleadoRequest request = new CrearEmpleadoRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email, _rol);
+
+            await AutenticacionService.CrearEmpleado(request);
+
+            _modelo.Contrasena = string.Empty;
+            Snackbar.Add("Empleado creado correctamente.", Severity.Success);
+            Navigation.NavigateTo("/");
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode is null)
+            {
+                _error = "No se pudo conectar con el servidor.";
+            }
+            else
+            {
+                _error = "No se pudo completar la creación del empleado.";
+            }
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

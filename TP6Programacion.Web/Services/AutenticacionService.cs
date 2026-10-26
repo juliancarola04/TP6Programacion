@@ -91,32 +91,23 @@ public class AutenticacionService
         return await EnviarConToken(crearSolicitud);
     }
 
-    public async Task Registrarse(RegisterRequest request)
+    public async Task CrearEmpleado(CrearEmpleadoRequest request)
     {
-        using HttpResponseMessage respuesta = await _httpClient.PostAsJsonAsync("api/auth/register", request with { EsWeb = true });
+        using HttpResponseMessage respuesta = await EnviarAutenticado(() =>
+            new HttpRequestMessage(HttpMethod.Post, "api/auth/empleados")
+            {
+                Content = JsonContent.Create(request)
+            });
 
         if (!respuesta.IsSuccessStatusCode)
         {
             string mensaje = await respuesta.Content.ReadAsStringAsync();
 
             if (string.IsNullOrWhiteSpace(mensaje))
-            {
-                mensaje = "No se pudo crear la cuenta.";
-            }
+                mensaje = "No se pudo crear el empleado.";
 
             throw new InvalidOperationException(mensaje);
         }
-
-        RegisterResponse? registro = await respuesta.Content.ReadFromJsonAsync<RegisterResponse>();
-
-        if (registro is null || string.IsNullOrWhiteSpace(registro.Token) || string.IsNullOrWhiteSpace(registro.RefreshToken))
-        {
-            throw new InvalidOperationException("El servidor no devolvió una sesión válida.");
-        }
-
-        LoginResponse sesion = new LoginResponse(registro.Token, registro.RefreshToken, registro.SesionExpira);
-
-        await _almacenamientoTokensService.Guardar(sesion);
     }
 
     public async Task CerrarSesion()
