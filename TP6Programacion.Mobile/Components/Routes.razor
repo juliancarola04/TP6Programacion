@@ -23,19 +23,13 @@
 </Router>
 
 @code {
-    private bool _sesionComprobada;
-
     private async Task AlNavegar(
         Microsoft.AspNetCore.Components.Routing.NavigationContext contexto)
     {
-        if (_sesionComprobada)
-            return;
-
+        // NO TOCAR ESTO SOL. SI LO TOCÁS DESPUÉS NO VA A VOLVER A COMPROBAR 👎
         contexto.CancellationToken.ThrowIfCancellationRequested();
 
         await Estado.Actualizar();
-
-        _sesionComprobada = true;
 
         contexto.CancellationToken.ThrowIfCancellationRequested();
     }

@@ -1,19 +1,29 @@
 @using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @page "/catalogo"
 @using System.Globalization
 @using System.Net
 @using System.Text.Json
+@using TP6Programacion.Mobile.Models
 @using TP6Programacion.Mobile.Services
 @using TP6Programacion.Shared.DTO.Paginado.Request.Producto
 @using TP6Programacion.Shared.DTO.Producto.Response
 @inject CatalogoService CatalogoService
+@inject CarritoService CarritoService
+@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
 <PageTitle>Catálogo</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
     <MudStack Spacing="4">
-        <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
+
+            <MudButton Href="/carrito" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ShoppingCart">
+                Ver carrito
+            </MudButton>
+        </MudStack>
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudTextField T="string"
@@ -79,6 +89,16 @@
                                     <MudText Typo="Typo.body2" Color="Color.Error">Sin stock</MudText>
                                 }
                             </MudCardContent>
+                            
+                            <MudCardActions>
+                                <MudButton Color="Color.Primary"
+                                           Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                                           Disabled="@(producto.Stock <= 0 || _agregando)"
+                                           OnClick="@(() => AgregarAlCarrito(producto))">
+                                    Añadir al carrito
+                                </MudButton>
+                            </MudCardActions>
                         </MudCard>
                     </MudItem>
                 }
@@ -97,6 +117,7 @@
     private string? _buscar;
     private string? _busquedaAplicada;
     private string? _error;
+    private bool _agregando;
     private bool _cargando;
     private int _pagina = 1;
     private int _totalPaginas;
@@ -174,5 +195,43 @@
 
         _pagina = pagina;
         await CargarCatalogo();
+    }
+
+    private async Task AgregarAlCarrito(ProductoCatalogoResponse productoCatalogoResponse)
+    {
+        if (_agregando)
+        {
+            return;
+        }
+
+        _agregando = true;
+
+        try
+        {
+            List<CarritoItem> items = await CarritoService.Obtener();
+
+            CarritoItem item = items.FirstOrDefault(i => i.ProductoId == productoCatalogoResponse.Id);
+
+            int cantidadEnCarritoProducto = item?.Cantidad ?? 0;
+
+            if (cantidadEnCarritoProducto >= productoCatalogoResponse.Stock)
+            {
+                Snackbar.Add("Ya agregaste todos los items que podías de este producto. Ya no hay stock.", Severity.Warning);
+                
+                return;
+            }
+            
+            await CarritoService.Agregar(productoCatalogoResponse.Id);
+
+            Snackbar.Add($"Se agregó {productoCatalogoResponse.Nombre} al carrito", Severity.Success);
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        finally
+        {
+            _agregando = false;
+        }
     }
 }
