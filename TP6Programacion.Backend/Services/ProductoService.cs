@@ -234,5 +234,17 @@ namespace TP6Programacion.Backend.Services
 
                 await _repo.Eliminar(producto);
         }
+        
+        public async Task<List<ProductoCarritoResponse>> ObtenerProductosCarrito(List<int> productoIds)
+        {
+            if (productoIds.Count == 0 || productoIds.Any(id => id <= 0))
+            {
+                throw new DatosLlegaronErradosException("Los IDs de los productos son invalidos.");
+            }
+
+            var productos = await _repo.ObtenerPorIds(productoIds.Distinct().ToList());
+
+            return productos.Select(p => new ProductoCarritoResponse(p.Id, p.Nombre, p.PrecioVenta, p.Stock)).ToList();
+        }
     }
 }
