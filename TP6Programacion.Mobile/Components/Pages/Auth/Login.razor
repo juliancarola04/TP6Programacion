@@ -7,6 +7,7 @@
 @using TP6Programacion.Mobile.Services
 @inject AutenticacionService AutenticacionService
 @inject NavigationManager Navigation
+@inject EstadoAutenticacionProvider EstadoAutenticacion
 
 <PageTitle>Iniciar sesión</PageTitle>
 
@@ -59,6 +60,12 @@
                Disabled="_procesando">
         Registrarse
     </MudButton>
+    <MudButton Href="/catalogo"
+               Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               FullWidth="true">
+        Explorar catálogo sin iniciar sesión
+    </MudButton>
 </MudStack>
 
 @code {
@@ -89,6 +96,8 @@
             LoginRequest request = new LoginRequest(_modelo.Usuario, _modelo.Contrasena);
 
             await AutenticacionService.IniciarSesion(request);
+            await EstadoAutenticacion.Actualizar();
+
 
             _modelo.Contrasena = string.Empty;
 
