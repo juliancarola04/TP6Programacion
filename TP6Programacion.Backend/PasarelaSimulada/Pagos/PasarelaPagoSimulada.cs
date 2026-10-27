@@ -12,7 +12,7 @@ namespace TP6Programacion.Backend.PasarelaSimulada.Pagos
             var resultado = new ResultadoPasarelaPago
             {
                 ReferenciaPago = $"SIM-{Guid.NewGuid():N}",
-                Estado = "Aprobado",
+                Estado = EstadoPago.Aprobado,
                 Mensaje = "Pago aprobado por la pasarela simulada."
             };
 

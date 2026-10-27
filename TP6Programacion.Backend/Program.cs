@@ -118,7 +118,7 @@ try
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IPasarelaPago, PasarelaPagoSimulada>();
         builder.Services.AddScoped<IPagoRepository, PagoRepositoryPsqlEF>();
-        builder.Services.AddScoped<IPasarelaPago, PasarelaPagoSimulada>();
+
 
 
         builder.Services.AddScoped<CategoriaService>();

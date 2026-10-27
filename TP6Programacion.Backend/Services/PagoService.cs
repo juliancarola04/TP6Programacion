@@ -11,6 +11,7 @@ namespace TP6Programacion.Backend.Services
         private readonly IPagoRepository _pagoRepo;
         private readonly IVentaRepository _ventaRepo;
         private readonly IPasarelaPago _pasarela;
+        private readonly IClienteRepository _clienteRepo;
         private readonly VentaService _ventaService;
 
         public PagoService(
@@ -25,12 +26,16 @@ namespace TP6Programacion.Backend.Services
             _ventaService = ventaService;
         }
 
-        public async Task<ResultadoPasarelaPago> ProcesarPago(int ventaId,MetodoPago metodo)
+        public async Task<ResultadoPasarelaPago> ProcesarPago(int ventaId,int usuarioId,MetodoPago metodo)
         {
-            Venta? venta =
-                await _ventaRepo.ObtenerParaProcesarPago(ventaId);
+            if (!Enum.IsDefined(metodo))
+                throw new DatosLlegaronErradosException("El método de pago no es válido.");
 
-            if (venta is null)
+            Venta? venta = await _ventaRepo.ObtenerParaProcesarPago(ventaId);
+
+            Cliente? cliente = await _clienteRepo.ObtenerPorUsuarioId(usuarioId); //para verificar de quien es la venta
+
+            if (venta is null || cliente is null || venta.ClienteId != cliente.Id)
             {
                 throw new RecursoNoExisteException(
                     "No existe ninguna venta con ese id.");
@@ -82,21 +87,15 @@ namespace TP6Programacion.Backend.Services
 
             await _pagoRepo.GuardarCambios();
 
-            if (resultado.Estado.Equals(
-                "Aprobado",
-                StringComparison.OrdinalIgnoreCase))
+            if (resultado.Estado == EstadoPago.Aprobado)
             {
                 await _ventaService.AprobarPago(venta.Id, pago.Id);
             }
-            else if (resultado.Estado.Equals(
-                "Rechazado",
-                StringComparison.OrdinalIgnoreCase))
+            else if (resultado.Estado == EstadoPago.Rechazado)
             {
                 await _ventaService.RechazarPago(venta.Id, pago.Id);
             }
-            else if (!resultado.Estado.Equals(
-                "Pendiente",
-                StringComparison.OrdinalIgnoreCase))
+            else
             {
                 throw new DatosLlegaronErradosException(
                     "La pasarela devolvió un estado de pago desconocido.");

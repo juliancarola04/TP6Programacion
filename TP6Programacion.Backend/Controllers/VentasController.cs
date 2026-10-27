@@ -4,6 +4,7 @@ using System.Security.Claims;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Services;
+using TP6Programacion.Backend.Utilidades;
 using TP6Programacion.Shared.DTO.Paginado.Request.Venta;
 using TP6Programacion.Shared.DTO.Paginado.Response;
 using TP6Programacion.Shared.DTO.Venta.Request;
@@ -16,9 +17,11 @@ namespace TP6Programacion.Backend.Controllers;
 public class VentasController : ControllerBase
 {
     private readonly VentaService _ventaService;
-    public VentasController(VentaService ventaService)
+    private readonly PagoService _pagoService;
+    public VentasController(VentaService ventaService, PagoService pagoService)
     {
         _ventaService = ventaService;
+        _pagoService = pagoService;
     }
     [HttpGet]
     [Authorize(Roles = "Administrador,Cajero")]
@@ -58,35 +61,83 @@ public class VentasController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
         }
     }
-    /*[HttpPost]
+    [HttpPost("presencial")]
     [Authorize(Roles = "Administrador,Cajero")]
-    public async Task<ActionResult<VentaResponse>> Crear(CrearVentaRequest dto)
+    public async Task<ActionResult<VentaResponse>> CrearPresencial(CrearVentaPresencialRequest dto)
     {
-        string? usuarioIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (usuarioIdClaim is null || !int.TryParse(usuarioIdClaim, out int usuarioId))
-        {
-            return Unauthorized("No se pudo identificar al usuario a partir del token.");
-        }
+        int? usuarioId = User.ObtenerUsuarioId();
+        if (usuarioId is null) return Unauthorized("No se pudo identificar al usuario a partir del token.");
 
         try
         {
-            VentaResponse venta = await _ventaService.Crear(dto, usuarioId);
+            VentaResponse venta = await _ventaService.CrearVentaPresencial(dto, usuarioId.Value);
             return CreatedAtAction(nameof(ObtenerPorId), new { id = venta.Id }, venta);
         }
-        catch (DatosLlegaronErradosException e)
+        catch (DatosLlegaronErradosException e) { return BadRequest(e.Message); }
+        catch (RecursoNoExisteException e) { return NotFound(e.Message); }
+        catch (BaseDeDatosException e) { return StatusCode(StatusCodes.Status500InternalServerError, e.Message); }
+    }
+
+    [HttpPost("online")]
+    [Authorize(Roles = "Cliente")]
+    public async Task<ActionResult<VentaResponse>> CrearCompraOnline(CrearCompraOnlineRequest dto)
+    {
+        int? usuarioId = User.ObtenerUsuarioId();
+        if (usuarioId is null) return Unauthorized("No se pudo identificar al usuario a partir del token.");
+
+        try
         {
-            return BadRequest(e.Message);
+            VentaResponse venta = await _ventaService.CrearCompraOnline(dto, usuarioId.Value);
+            return CreatedAtAction(nameof(ObtenerMiCompra), new { id = venta.Id }, venta);
         }
-        catch (RecursoNoExisteException e)
+        catch (DatosLlegaronErradosException e) { return BadRequest(e.Message); }
+        catch (RecursoNoExisteException e) { return NotFound(e.Message); }
+        catch (BaseDeDatosException e) { return StatusCode(StatusCodes.Status500InternalServerError, e.Message); }
+    }
+    [HttpPost("{id:int}/pago")]
+    [Authorize(Roles = "Cliente")]
+    public async Task<ActionResult<VentaResponse>> Pagar(int id, PagarVentaRequest dto)
+    {
+        int? usuarioId = User.ObtenerUsuarioId();
+        if (usuarioId is null) return Unauthorized("No se pudo identificar al usuario a partir del token.");
+
+        try
         {
-            return NotFound(e.Message);
+            await _pagoService.ProcesarPago(id, usuarioId.Value, dto.Metodo);
+            return Ok(await _ventaService.ObtenerMiCompra(id, usuarioId.Value)); // la app ve el estado final
         }
-        catch (BaseDeDatosException e)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-        }
-    }*/
+        catch (DatosLlegaronErradosException e) { return BadRequest(e.Message); }
+        catch (RecursoNoExisteException e) { return NotFound(e.Message); }
+        catch (BaseDeDatosException e) { return StatusCode(StatusCodes.Status500InternalServerError, e.Message); }
+    }
+
+    [HttpGet("mis-compras")]
+    [Authorize(Roles = "Cliente")]
+    public async Task<ActionResult<PaginadoResponseDto<VentaListadoResponse>>> ObtenerMisCompras(
+        [FromQuery] ParametroPaginacionVentaRequest parametros)
+    {
+        int? usuarioId = User.ObtenerUsuarioId();
+        if (usuarioId is null) return Unauthorized();
+
+        PaginadoResponse<VentaListadoResponse> ventas =
+            await _ventaService.ObtenerMisCompras(usuarioId.Value, parametros);
+
+        return Ok(new PaginadoResponseDto<VentaListadoResponse>(ventas.NumeroPagina, ventas.TamanoPagina,
+            ventas.TotalRegistros, ventas.TotalPaginas, ventas.TienePaginaAnterior,
+            ventas.TienePaginaPosterior, ventas.Datos));
+    }
+
+    [HttpGet("mis-compras/{id:int}")]
+    [Authorize(Roles = "Cliente")]
+    public async Task<ActionResult<VentaResponse>> ObtenerMiCompra(int id)
+    {
+        int? usuarioId = User.ObtenerUsuarioId();
+        if (usuarioId is null) return Unauthorized();
+
+        try { return Ok(await _ventaService.ObtenerMiCompra(id, usuarioId.Value)); }
+        catch (RecursoNoExisteException e) { return NotFound(e.Message); }
+    }
+
     [HttpDelete("{id}")]
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Anular(int id)
