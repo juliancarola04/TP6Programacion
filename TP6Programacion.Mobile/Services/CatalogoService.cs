@@ -74,4 +74,23 @@ public class CatalogoService
 
         return catalogo;
     }
+    
+    public async Task<List<ProductoCarritoResponse>> ObtenerProductosCarrito(List<int> productoIds)
+    {
+        if (productoIds.Count == 0)
+        {
+            return new List<ProductoCarritoResponse>();
+            
+        }
+
+        string query = string.Join("&", productoIds.Distinct().Select(id => $"productosId={id}"));
+
+        string ruta = $"api/productos/carrito?{query}";
+
+        using HttpResponseMessage respuesta = await _autenticacionService .EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, ruta));
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await respuesta.Content.ReadFromJsonAsync<List<ProductoCarritoResponse>>() ?? throw new InvalidOperationException("No se pudieron obtener los productos.");
+    }
 }

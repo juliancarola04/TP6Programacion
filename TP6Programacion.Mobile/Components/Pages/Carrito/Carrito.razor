@@ -1,0 +1,79 @@
+@page "/carrito"
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Mobile.Services
+@inject ISnackbar Snackbar
+@inject CarritoService CarritoService
+@inject CatalogoService CatalogoService
+@attribute [Authorize]
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudText Typo="Typo.h5">Mi carrito</MudText>
+
+    @if (_productos.Count == 0)
+    {
+        <MudText>El carrito está vacío.</MudText>
+    }
+    else
+    {
+        <MudList T="ProductoCarrito">
+            @foreach (var producto in _productos)
+            {
+                <MudListItem T="ProductoCarrito">
+                    <MudText>@producto.Nombre</MudText>
+                    <MudText Typo="Typo.body2">
+                        Cantidad: @producto.Cantidad —
+                        Subtotal: @((producto.PrecioVenta * producto.Cantidad).ToString("C2"))
+                    </MudText>
+                </MudListItem>
+            }
+        </MudList>
+
+        <MudText Typo="Typo.h6">
+            Total: @_productos.Sum(p => p.PrecioVenta * p.Cantidad).ToString("C2")
+        </MudText>
+    }
+</MudContainer>
+
+@code {
+    private List<ProductoCarrito> _productos = new();
+    private bool _cargando = true;
+    private string? _error;
+
+    private record ProductoCarrito(int ProductoId, string Nombre, decimal PrecioVenta, int Cantidad);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var items = await CarritoService.Obtener();
+
+            var ids = items.Select(item => item.ProductoId).ToList();
+            var productos = await CatalogoService.ObtenerProductosCarrito(ids);
+
+            foreach (var item in items)
+            {
+                var producto = productos.FirstOrDefault(p => p.ProductoId == item.ProductoId);
+
+                if (producto is null)
+                {
+                    Snackbar.Add($"El producto {item.ProductoId} ya no está disponible.", Severity.Warning);
+                    continue;
+                }
+
+                _productos.Add(new ProductoCarrito(producto.ProductoId, producto.Nombre, producto.PrecioVenta, item.Cantidad));
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo consultar el carrito. Intentá nuevamente.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+}
