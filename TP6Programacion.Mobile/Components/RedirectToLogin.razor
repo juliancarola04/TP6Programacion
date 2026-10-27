@@ -3,7 +3,18 @@
 @code {
     protected override void OnAfterRender(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
+            return;
+
+        var rutaActual = Navigation.ToBaseRelativePath(
+            Navigation.Uri
+        );
+
+        if (!rutaActual.StartsWith(
+                "login",
+                StringComparison.OrdinalIgnoreCase))
+        {
             Navigation.NavigateTo("/login", replace: true);
+        }
     }
 }

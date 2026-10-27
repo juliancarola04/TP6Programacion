@@ -29,21 +29,33 @@ public class EstadoAutenticacionProvider : AuthenticationStateProvider
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                new Claim(ClaimTypes.Name, usuario.Username),
-                new Claim(ClaimTypes.Email, usuario.Email),
-                new Claim(ClaimTypes.Role, usuario.Rol.ToString())
-            };
+            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new Claim(ClaimTypes.Name, usuario.Username),
+            new Claim(ClaimTypes.Email, usuario.Email),
+            new Claim(ClaimTypes.Role, usuario.Rol.ToString())
+        };
 
             var identidad = new ClaimsIdentity(claims, "Api");
             nuevoUsuario = new ClaimsPrincipal(identidad);
         }
-        catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+        catch (HttpRequestException e)
+            when (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            nuevoUsuario = new ClaimsPrincipal(new ClaimsIdentity());
+        }
+        catch (HttpRequestException)
+        {
+            // No se pudo comprobar la sesión por un problema de conexión.
+            // No se debe borrar automáticamente el token por este motivo.
+            nuevoUsuario = new ClaimsPrincipal(new ClaimsIdentity());
+        }
+        catch (InvalidOperationException)
         {
             nuevoUsuario = new ClaimsPrincipal(new ClaimsIdentity());
         }
 
         _usuario = nuevoUsuario;
+
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 }

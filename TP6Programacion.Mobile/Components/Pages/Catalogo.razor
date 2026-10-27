@@ -1,5 +1,4 @@
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @page "/catalogo"
 @using System.Globalization
 @using System.Net
@@ -136,16 +135,9 @@
             _totalPaginas = resultado.TotalPaginas;
             _totalRegistros = resultado.TotalRegistros;
         }
-        catch (HttpRequestException e)
+        catch (HttpRequestException)
         {
-            if (e.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                Navigation.NavigateTo("/login");
-            }
-            else
-            {
-                _error = "No se pudo cargar el catálogo. Intentá nuevamente.";
-            }
+            _error = "No se pudo cargar el catálogo. Verificá la conexión con el servidor e intentá nuevamente.";
         }
         catch (InvalidOperationException e)
         {

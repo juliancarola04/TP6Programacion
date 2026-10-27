@@ -5,6 +5,7 @@
 @using TP6Programacion.Mobile.Services
 @inject AutenticacionService AutenticacionService
 @inject NavigationManager Navigation
+@inject EstadoAutenticacionProvider EstadoAutenticacion
 
 <PageTitle>Registrarse</PageTitle>
 
@@ -63,6 +64,12 @@
     <MudButton Href="/login" FullWidth="true" Disabled="_procesando">
         Volver al inicio de sesión
     </MudButton>
+    <MudButton Href="/catalogo"
+               Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               FullWidth="true">
+        Explorar catálogo sin iniciar sesión
+    </MudButton>
 </MudStack>
 
 @code {
@@ -93,6 +100,7 @@
             RegisterRequest request = new RegisterRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email);
 
             await AutenticacionService.Registrarse(request);
+            await EstadoAutenticacion.Actualizar();
 
             _modelo.Contrasena = string.Empty;
 

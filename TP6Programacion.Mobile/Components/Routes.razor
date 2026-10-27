@@ -23,10 +23,20 @@
 </Router>
 
 @code {
-    private async Task AlNavegar(Microsoft.AspNetCore.Components.Routing.NavigationContext contexto)
+    private bool _sesionComprobada;
+
+    private async Task AlNavegar(
+        Microsoft.AspNetCore.Components.Routing.NavigationContext contexto)
     {
+        if (_sesionComprobada)
+            return;
+
         contexto.CancellationToken.ThrowIfCancellationRequested();
+
         await Estado.Actualizar();
+
+        _sesionComprobada = true;
+
         contexto.CancellationToken.ThrowIfCancellationRequested();
     }
 }

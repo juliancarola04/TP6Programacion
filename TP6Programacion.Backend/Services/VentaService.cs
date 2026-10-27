@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Data.Common;
 using TP6Programacion.Backend.Excepciones;
 using TP6Programacion.Backend.Models;
@@ -23,7 +25,8 @@ namespace TP6Programacion.Backend.Services
             _productoRepo = productoRepo;
             _clienteRepo = clienteRepo;
         }
-        public async Task<PaginadoResponse<VentaListadoResponse>> ObtenerTodas(ParametroPaginacionVentaRequest parametros)
+        public async Task<PaginadoResponse<VentaListadoResponse>> ObtenerTodas(
+           ParametroPaginacionVentaRequest parametros, int? clienteIdForzado = null)
         {
             try
             {
@@ -35,7 +38,7 @@ namespace TP6Programacion.Backend.Services
                     ? 20
                     : parametros.TamanoPagina > 50 ? 50 : parametros.TamanoPagina.Value;
 
-                int? clienteId = parametros.ClienteId;
+                int? clienteId = clienteIdForzado ?? parametros.ClienteId;
                 EstadoVenta? estado = parametros.Estado;
 
                 string? direccion =
@@ -77,6 +80,26 @@ namespace TP6Programacion.Backend.Services
                 throw new BaseDeDatosException($"Ocurrió un problema: {e.Message}");
             }
         }
+        public async Task<PaginadoResponse<VentaListadoResponse>> ObtenerMisCompras(
+            int usuarioId, ParametroPaginacionVentaRequest parametros)
+        {
+            Cliente? cliente = await _clienteRepo.ObtenerPorUsuarioId(usuarioId);
+
+            if (cliente is null)
+                return new PaginadoResponse<VentaListadoResponse>(new List<VentaListadoResponse>(), 1, 20, 0);
+
+            return await ObtenerTodas(parametros, cliente.Id);
+        }
+        public async Task<VentaResponse> ObtenerMiCompra(int id, int usuarioId)
+        {
+            Cliente? cliente = await _clienteRepo.ObtenerPorUsuarioId(usuarioId);
+            Venta? venta = await _repo.ObtenerPorId(id);
+
+            if (venta is null || cliente is null || venta.ClienteId != cliente.Id)
+                throw new RecursoNoExisteException("No existe ninguna compra con ese id.");
+
+            return MapearADto(venta);
+        }
         public async Task<VentaResponse> ObtenerPorId(int id)
         {
             try
@@ -95,7 +118,9 @@ namespace TP6Programacion.Backend.Services
                 throw new BaseDeDatosException($"Ocurrió un problema: {e.Message}");
             }
         }
-        public async Task<VentaResponse> CrearVentaPresencial(CrearVentaRequest dto,int usuarioId)
+        [HttpPost("presencial")]
+        [Authorize(Roles = "Administrador,Cajero")]
+        public async Task<VentaResponse> CrearVentaPresencial(CrearVentaPresencialRequest dto,int usuarioId)
         {
                 Cliente? cliente = await _clienteRepo.ObtenerPorId(dto.ClienteId);
                 if (cliente is null)
@@ -103,7 +128,7 @@ namespace TP6Programacion.Backend.Services
                     throw new RecursoNoExisteException("No existe ningún cliente con ese id.");
                 }
            
-            var (detalles, total) = await PrepararDetallesYDescontarStock(dto);
+            var (detalles, total) = await PrepararDetallesYDescontarStock(dto.Items);
 
             Venta venta = new()
             {
@@ -115,6 +140,14 @@ namespace TP6Programacion.Backend.Services
                 Estado = EstadoVenta.Confirmada,
                 FechaExpiracion = null
             };
+            venta.Pagos.Add(new Pago
+            {
+                Metodo = dto.Metodo,
+                Monto = total,
+                Estado = EstadoPago.Aprobado,
+                Fecha = DateTime.UtcNow,
+                ReferenciaPago = dto.ReferenciaPago
+            });
 
             await _repo.Crear(venta);
 
@@ -122,7 +155,10 @@ namespace TP6Programacion.Backend.Services
 
             return MapearADto(ventaCompleta!);
         }
-        public async Task<VentaResponse> CrearCompraOnline(CrearVentaRequest dto,int usuarioId)
+
+        [HttpPost("online")]
+        [Authorize(Roles = "Cliente")]
+        public async Task<VentaResponse> CrearCompraOnline(CrearCompraOnlineRequest dto,int usuarioId)
         {
             Cliente? cliente =
                 await _clienteRepo.ObtenerPorUsuarioId(usuarioId);
@@ -134,7 +170,7 @@ namespace TP6Programacion.Backend.Services
             }
 
             var (detalles, total) =
-                await PrepararDetallesYDescontarStock(dto);
+                await PrepararDetallesYDescontarStock(dto.Items);
 
             Venta venta = new()
             {
@@ -215,21 +251,22 @@ namespace TP6Programacion.Backend.Services
 
             await _repo.GuardarCambios();
         }
-        private async Task<(List<DetalleVenta> Detalles, decimal Total)>PrepararDetallesYDescontarStock(CrearVentaRequest dto)
+        private async Task<(List<DetalleVenta> Detalles, decimal Total)>PrepararDetallesYDescontarStock(
+                List<CrearVentaItemRequest> items)
         {
-            if (dto.Items is null || dto.Items.Count == 0)
+            if (items is null || items.Count == 0)
             {
                 throw new DatosLlegaronErradosException(
                     "La venta debe tener al menos un producto.");
             }
 
-            if (dto.Items.Any(i => i.Cantidad <= 0))
+            if (items.Any(i => i.Cantidad <= 0))
             {
                 throw new DatosLlegaronErradosException(
                     "La cantidad de cada producto debe ser mayor a cero.");
             }
 
-            var itemsAgrupados = dto.Items
+            var itemsAgrupados = items
                 .GroupBy(i => i.ProductoId)
                 .Select(g => new
                 {
@@ -275,7 +312,7 @@ namespace TP6Programacion.Backend.Services
 
             return (detalles, total);
         }
-        public async Task AprobarPago(int ventaId, int pagoId)
+        internal async Task AprobarPago(int ventaId, int pagoId)
         {
             Venta? venta = await _repo.ObtenerParaProcesarPago(ventaId);
 
@@ -326,7 +363,7 @@ namespace TP6Programacion.Backend.Services
             await _repo.GuardarCambios();
         }
 
-        public async Task RechazarPago(int ventaId, int pagoId)
+        internal async Task RechazarPago(int ventaId, int pagoId)
         {
             Venta? venta = await _repo.ObtenerParaProcesarPago(ventaId);
 
@@ -346,33 +383,26 @@ namespace TP6Programacion.Backend.Services
 
             await CancelarReservaPendiente(venta, pago);
         }
-        private async Task CancelarReservaPendiente(Venta venta,Pago pago)
+        private async Task CancelarReservaPendiente(Venta venta, Pago? pago)
         {
             if (venta.Estado != EstadoVenta.Pendiente)
-            {
-                throw new DatosLlegaronErradosException(
-                    "La venta ya no está pendiente.");
-            }
+                throw new DatosLlegaronErradosException("La venta ya no está pendiente.");
 
-            if (pago.Estado != EstadoPago.Pendiente)
-            {
-                throw new DatosLlegaronErradosException(
-                    "El pago ya fue procesado.");
-            }
+            if (pago is not null && pago.Estado != EstadoPago.Pendiente)
+                throw new DatosLlegaronErradosException("El pago ya fue procesado.");
 
             foreach (DetalleVenta detalle in venta.DetallesVentas)
-            {
                 detalle.Producto.Stock += detalle.Cantidad;
-            }
 
-            pago.Estado = EstadoPago.Rechazado;
+            if (pago is not null)
+                pago.Estado = EstadoPago.Rechazado;
 
             venta.Estado = EstadoVenta.Cancelada;
             venta.FechaExpiracion = null;
 
             await _repo.GuardarCambios();
         }
-        public async Task VencerReserva(int ventaId)
+        internal async Task VencerReserva(int ventaId)
         {
             Venta? venta = await _repo.ObtenerParaProcesarPago(ventaId);
 
@@ -395,12 +425,6 @@ namespace TP6Programacion.Backend.Services
 
             Pago? pago = venta.Pagos
                 .FirstOrDefault(p => p.Estado == EstadoPago.Pendiente);
-
-            if (pago is null)
-            {
-                throw new DatosLlegaronErradosException(
-                    "La reserva vencida no tiene un pago pendiente asociado.");
-            }
 
             await CancelarReservaPendiente(venta, pago);
         }
