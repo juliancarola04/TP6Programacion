@@ -71,38 +71,6 @@ try
                     RoleClaimType = ClaimTypes.Role,
                     ClockSkew = TimeSpan.Zero
                 };
-
-                options.Events = new JwtBearerEvents
-                {
-                    OnTokenValidated = async context =>
-                    {
-                        int? usuarioId = context.Principal?.ObtenerUsuarioId();
-                        if (usuarioId is null)
-                        {
-                            context.Fail("El identificador del usuario no es válido.");
-                            return;
-                        }
-
-                        var repository = context.HttpContext.RequestServices
-                            .GetRequiredService<IUsuarioRepository>();
-
-                        var usuario = await repository.BuscarPorId(usuarioId.Value);
-
-                        if (usuario is null || usuario.Eliminado)
-                        {
-                            context.Fail("La cuenta no está habilitada.");
-                            return;
-                        }
-
-                        if (context.Principal?.Identity is ClaimsIdentity identity)
-                        {
-                            foreach (Claim claim in
-                            identity.FindAll(ClaimTypes.Role).ToList())
-                                identity.RemoveClaim(claim);
-                            identity.AddClaim(new Claim(ClaimTypes.Role, usuario.Rol.ToString()));
-                        }
-                    }
-                };
             });
 
         builder.Services.AddScoped<ICategoriaRepository, CategoriaRepositoryPsqlEF>();

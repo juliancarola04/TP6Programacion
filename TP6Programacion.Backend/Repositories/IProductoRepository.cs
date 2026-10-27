@@ -13,5 +13,6 @@ namespace TP6Programacion.Backend.Repositories
         Task Crear(Producto producto);
         Task Actualizar(Producto producto);
         Task Eliminar(Producto producto);
+        Task<List<Producto>> ObtenerPorIds(List<int> productoIds);
     }
 }

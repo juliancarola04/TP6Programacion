@@ -213,6 +213,20 @@ namespace TP6Programacion.Backend.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
+        
+        // Este endppint lo vamos a usar para mostrar las cosas que el cliente se quiere llevar en su carrito. Es visual principalmente
+        [HttpGet("carrito")]
+        public async Task<ActionResult<List<ProductoCarritoResponse>>> ObtenerProductosCarrito([FromQuery] List<int> productosId)
+        {
+            try
+            {
+                return Ok(await _productoService.ObtenerProductosCarrito(productosId));
+            }
+            catch (DatosLlegaronErradosException e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
 
     }
 }

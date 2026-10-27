@@ -85,5 +85,13 @@ namespace TP6Programacion.Backend.Implementacion
             _dataContext.Productos.Remove(producto);
             await _dataContext.SaveChangesAsync();
         }
+        
+        public async Task<List<Producto>> ObtenerPorIds(List<int> productoIds)
+        {
+            return await _dataContext.Productos
+                .AsNoTracking()
+                .Where(p => productoIds.Contains(p.Id) && !p.Eliminado)
+                .ToListAsync();
+        }
     }
 }
