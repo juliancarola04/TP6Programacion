@@ -11,10 +11,12 @@ namespace TP6Programacion.Mobile.Services;
 public class CatalogoService
 {
     private readonly HttpClient _httpClient;
+    private readonly AutenticacionService _autenticacionService;
 
-    public CatalogoService(HttpClient httpClient)
+    public CatalogoService(HttpClient httpClient, AutenticacionService autenticacionService)
     {
         _httpClient = httpClient;
+        _autenticacionService = autenticacionService;
     }
 
     public async Task<PaginadoResponseDto<ProductoCatalogoResponse>>
@@ -56,7 +58,7 @@ public class CatalogoService
 
         string ruta = $"api/productos/catalogo?{query}";
 
-        using HttpResponseMessage respuesta = await _httpClient.GetAsync(ruta);
+        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, ruta));
 
         respuesta.EnsureSuccessStatusCode();
 
