@@ -53,9 +53,10 @@ public static class MauiProgram
             sp.GetRequiredService<EstadoAutenticacionProvider>());
         builder.Services.AddScoped<CatalogoService>();
         builder.Services.AddScoped<CarritoService>();
+        builder.Services.AddScoped<ComprasService>();
 
 #if DEBUG
-		builder.Services.AddBlazorWebViewDeveloperTools();
+        builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
 #endif
 

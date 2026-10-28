@@ -10,6 +10,7 @@
 @inject CarritoService CarritoService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Catálogo</PageTitle>
 
@@ -17,11 +18,18 @@
     <MudStack Spacing="4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
             <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
-
+            
             <AuthorizeView Roles="Cliente">
-                <MudButton Href="/carrito" StartIcon="@Icons.Material.Filled.ShoppingCart">
-                    Ver carrito
-                </MudButton>
+                <Authorized>
+                    <MudButton Href="/carrito" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ShoppingCart">
+                        Ver carrito
+                    </MudButton>
+                </Authorized>
+                <NotAuthorized>
+                    <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary">
+                        Iniciar sesión
+                    </MudButton>
+                </NotAuthorized>
             </AuthorizeView>
         </MudStack>
 
@@ -203,6 +211,14 @@
     {
         if (_agregando)
         {
+            return;
+        }
+        AuthenticationState estado = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (estado.User.Identity?.IsAuthenticated != true)
+        {
+            Snackbar.Add("Iniciá sesión para agregar productos al carrito.", Severity.Info);
+            Navigation.NavigateTo("/login");
             return;
         }
 

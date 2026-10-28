@@ -59,7 +59,7 @@ public class CatalogoService
         string ruta = $"api/productos/catalogo?{query}";
 
         using HttpResponseMessage respuesta = await _httpClient.GetAsync(ruta);
-
+        
         respuesta.EnsureSuccessStatusCode();
 
         var catalogo =

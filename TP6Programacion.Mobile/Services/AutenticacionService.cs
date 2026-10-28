@@ -155,7 +155,6 @@ public class AutenticacionService
 
         await _almacenamientoTokensService.Guardar(sesion);
     }
-    
     // ESTO es lo que vamos a usar!
     public async Task<string?> ObtenerTokenVigente()
     {

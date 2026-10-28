@@ -1,15 +1,30 @@
 @page "/carrito"
+@using System.Globalization
 @using Microsoft.AspNetCore.Authorization
 @using TP6Programacion.Mobile.Services
+@using TP6Programacion.Shared.DTO.Venta.Request
+@using TP6Programacion.Shared.DTO.Venta.Response
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 @inject CarritoService CarritoService
 @inject CatalogoService CatalogoService
 @attribute [Authorize(Roles = "Cliente")]
+@inject ComprasService ComprasService
 
-<MudContainer MaxWidth="MaxWidth.Small">
-    <MudText Typo="Typo.h5">Mi carrito</MudText>
+<PageTitle>Mi carrito</PageTitle>
 
-    @if (_productos.Count == 0)
+<MudContainer MaxWidth="MaxWidth.Small" Style="padding-bottom: 96px;">
+    <MudText Typo="Typo.h5" HtmlTag="h1">Mi carrito</MudText>
+
+    @if (_cargando)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+    }
+    else if (_productos.Count == 0)
     {
         <MudText>El carrito está vacío.</MudText>
     }
@@ -22,24 +37,45 @@
                     <MudText>@producto.Nombre</MudText>
                     <MudText Typo="Typo.body2">
                         Cantidad: @producto.Cantidad —
-                        Subtotal: @((producto.PrecioVenta * producto.Cantidad).ToString("C2"))
+                        Subtotal: @((producto.PrecioVenta * producto.Cantidad).ToString("C2", _cultura))
                     </MudText>
                 </MudListItem>
             }
         </MudList>
-
-        <MudText Typo="Typo.h6">
-            Total: @_productos.Sum(p => p.PrecioVenta * p.Cantidad).ToString("C2")
-        </MudText>
     }
 </MudContainer>
 
+@if (!_cargando && string.IsNullOrWhiteSpace(_error) && _productos.Count > 0)
+{
+    <MudPaper Elevation="8"
+              Class="d-flex align-center justify-space-between pa-3"
+              Style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: max(12px, env(safe-area-inset-bottom));">
+        <div>
+            <MudText Typo="Typo.caption">Total</MudText>
+            <MudText Typo="Typo.h6">@Total.ToString("C2", _cultura)</MudText>
+        </div>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="_procesando"
+                   OnClick="Continuar">
+            @(_procesando ? "Procesando..." : $"Continuar ({CantidadTotal})")
+        </MudButton>
+    </MudPaper>
+}
+
 @code {
+    private static readonly CultureInfo _cultura = CultureInfo.GetCultureInfo("es-AR");
+
     private List<ProductoCarrito> _productos = new();
     private bool _cargando = true;
+    private bool _procesando;
     private string? _error;
 
     private record ProductoCarrito(int ProductoId, string Nombre, decimal PrecioVenta, int Cantidad);
+
+    private decimal Total => _productos.Sum(p => p.PrecioVenta * p.Cantidad);
+    private int CantidadTotal => _productos.Sum(p => p.Cantidad);
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,6 +110,41 @@
         finally
         {
             _cargando = false;
+        }
+    }
+
+    private async Task Continuar()
+    {
+        if (_procesando || _productos.Count == 0)
+        {
+            return;
+        }
+
+        _procesando = true;
+
+        try
+        {
+            // Se mandan solo los productos que se muestran, no lo que hay guardado en el celu,
+            // porque el guardado puede tener productos que ya no existen.
+            List<CrearVentaItemRequest> items = _productos
+                .Select(p => new CrearVentaItemRequest(p.ProductoId, p.Cantidad))
+                .ToList();
+
+            VentaResponse venta = await ComprasService.CrearCompraOnline(items);
+
+            Navigation.NavigateTo($"/pago/{venta.Id}");
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("No se pudo conectar con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
         }
     }
 }

@@ -51,6 +51,34 @@
                           InputType="InputType.Email"
                           MaxLength="320" />
 
+            <MudTextField T="string"
+                          @bind-Value="_nombre"
+                          Label="Nombre y apellido"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu nombre y apellido." />
+
+            <MudTextField T="string"
+                          @bind-Value="_dni"
+                          Label="DNI"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu DNI." />
+
+            <MudTextField T="string"
+                          @bind-Value="_telefono"
+                          Label="Teléfono"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu teléfono." />
+
+            <MudTextField T="string"
+                          @bind-Value="_direccion"
+                          Label="Dirección"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Ingresá tu dirección." />
+
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        FullWidth="true"
@@ -77,6 +105,10 @@
     private MudForm _formulario = null!;
     private bool _procesando;
     private string? _error;
+    private string _nombre = string.Empty;
+    private string _dni = string.Empty;
+    private string _telefono = string.Empty;
+    private string _direccion = string.Empty;
 
     private async Task Registrarse()
     {
@@ -97,7 +129,14 @@
                 return;
             }
 
-            RegisterRequest request = new RegisterRequest(_modelo.Usuario, _modelo.Contrasena, _modelo.Email);
+            RegisterRequest request = new RegisterRequest(
+                _modelo.Usuario,
+                _modelo.Contrasena,
+                _modelo.Email,
+                _nombre,
+                _dni,
+                _telefono,
+                _direccion);
 
             await AutenticacionService.Registrarse(request);
             await EstadoAutenticacion.Actualizar();
