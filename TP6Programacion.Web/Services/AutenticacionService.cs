@@ -1,7 +1,10 @@
+using System.Net;
 using TP6Programacion.Shared.Enums;
 using TP6Programacion.Shared.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 using TP6Programacion.Shared.DTO.Auth.Request;
 using TP6Programacion.Shared.DTO.Auth.Response;
 
@@ -20,15 +23,22 @@ public class AutenticacionService
 
     public async Task<UsuarioSesion> ObtenerUsuarioSesion()
     {
-        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
-        respuesta.EnsureSuccessStatusCode();
+        string? token = await ObtenerTokenVigente();
 
-        UsuarioSesion? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioSesion>();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new HttpRequestException("No hay una sesión válida.", null, HttpStatusCode.Unauthorized);
+        }
 
-        if (usuario is null)
-            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
+        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(token);
 
-        return usuario;
+        if (!int.TryParse(jwt.Subject, out int usuarioId) ||
+            !Enum.TryParse<Rol>(jwt.GetClaim(ClaimTypes.Role).Value, out var rol) || !Enum.IsDefined(rol))
+        {
+            throw new InvalidOperationException("Los datos del token no son válidos.");
+        }
+
+        return new UsuarioSesion(usuarioId, jwt.GetClaim("username").Value, jwt.GetClaim("email").Value, rol);
     }
 
     private async Task RenovarSesion()
@@ -177,5 +187,42 @@ public class AutenticacionService
             throw new InvalidOperationException(
                 "Esta cuenta no tiene acceso al panel web.");
         }
+    }
+    
+    // ESTO es lo que vamos a usar!
+    public async Task<string?> ObtenerTokenVigente()
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token))
+        {
+            return null;
+        }
+
+        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(sesion.Token);
+
+        if (jwt.ValidTo > DateTime.UtcNow)
+        {
+            return sesion.Token;
+        }
+
+        if (string.IsNullOrWhiteSpace(sesion.RefreshToken))
+        {
+            return null;
+        }
+
+        try
+        {
+            await RenovarSesion();
+        }
+        catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await _almacenamientoTokensService.Limpiar();
+            return null;
+        }
+
+        sesion = await _almacenamientoTokensService.Obtener();
+
+        return sesion?.Token;
     }
 }
