@@ -1,0 +1,156 @@
+﻿@page "/pago/{VentaId:int}"
+@using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Mobile.Services
+@using TP6Programacion.Shared.DTO.Venta.Response
+@using TP6Programacion.Shared.Enums
+@inject ComprasService ComprasService
+@inject CarritoService CarritoService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@attribute [Authorize]
+
+<PageTitle>Pago</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudText Typo="Typo.h5" HtmlTag="h1">Pago</MudText>
+
+    @if (_cargando)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <MudButton Href="/carrito" Class="mt-2">Volver al carrito</MudButton>
+    }
+    else if (_venta is not null)
+    {
+        @if (_venta.Estado == EstadoVenta.Confirmada)
+        {
+            <MudAlert Severity="Severity.Success">¡Pago aprobado! Tu compra #@_venta.Id fue confirmada.</MudAlert>
+            <MudButton Href="/catalogo" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4">
+                Seguir comprando
+            </MudButton>
+        }
+        else if (_venta.Estado != EstadoVenta.Pendiente)
+        {
+            <MudAlert Severity="Severity.Warning">Esta compra ya no se puede pagar (estado: @_venta.Estado).</MudAlert>
+            <MudButton Href="/carrito" Class="mt-2">Volver al carrito</MudButton>
+        }
+        else
+        {
+            @if (_pagoRechazado)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">El pago fue rechazado. Podés intentar de nuevo.</MudAlert>
+            }
+
+            <MudList T="VentaDetalleResponse">
+                @foreach (var d in _venta.Detalles)
+                {
+                    <MudListItem T="VentaDetalleResponse">
+                        <MudText>@d.ProductoNombre</MudText>
+                        <MudText Typo="Typo.body2">
+                            @d.Cantidad x @d.PrecioUnitario.ToString("C2", _cultura) — @d.Subtotal.ToString("C2", _cultura)
+                        </MudText>
+                    </MudListItem>
+                }
+            </MudList>
+
+            <MudText Typo="Typo.h6" Class="my-3">Total: @_venta.Total.ToString("C2", _cultura)</MudText>
+
+            <MudText Typo="Typo.subtitle1">Método de pago</MudText>
+            <MudRadioGroup T="MetodoPago" @bind-Value="_metodo">
+                @foreach (var m in _metodos)
+                {
+                    <MudRadio T="MetodoPago" Value="@m">@m</MudRadio>
+                }
+            </MudRadioGroup>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Class="mt-4"
+                       Disabled="_procesando"
+                       OnClick="Pagar">
+                @(_procesando ? "Procesando pago..." : $"Pagar {_venta.Total.ToString("C2", _cultura)}")
+            </MudButton>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int VentaId { get; set; }
+
+    private static readonly CultureInfo _cultura = CultureInfo.GetCultureInfo("es-AR");
+
+    private readonly List<MetodoPago> _metodos = Enum.GetValues<MetodoPago>()
+        .Where(m => m != MetodoPago.Efectivo)
+        .ToList();
+
+    private VentaResponse? _venta;
+    private MetodoPago _metodo;
+    private bool _cargando = true;
+    private bool _procesando;
+    private bool _pagoRechazado;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _metodo = _metodos.FirstOrDefault();
+
+        try
+        {
+            _venta = await ComprasService.ObtenerMiCompra(VentaId);
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo conectar con el servidor.";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task Pagar()
+    {
+        if (_procesando)
+        {
+            return;
+        }
+
+        _procesando = true;
+        _pagoRechazado = false;
+
+        try
+        {
+            _venta = await ComprasService.Pagar(VentaId, _metodo);
+
+            if (_venta.Estado == EstadoVenta.Confirmada)
+            {
+                await CarritoService.Vaciar();
+            }
+            else
+            {
+                _pagoRechazado = true;
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("No se pudo conectar con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+}

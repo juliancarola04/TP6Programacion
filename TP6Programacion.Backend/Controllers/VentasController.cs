@@ -13,7 +13,6 @@ using TP6Programacion.Shared.DTO.Venta.Response;
 namespace TP6Programacion.Backend.Controllers;
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
 public class VentasController : ControllerBase
 {
     private readonly VentaService _ventaService;
@@ -25,7 +24,6 @@ public class VentasController : ControllerBase
     }
     [HttpGet]
     [Authorize(Roles = "Administrador,Cajero")]
-
     public async Task<ActionResult<PaginadoResponseDto<VentaListadoResponse>>> ObtenerTodas(
         [FromQuery] ParametroPaginacionVentaRequest parametros)
     {

@@ -18,11 +18,13 @@ namespace TP6Programacion.Backend.Services
             IPagoRepository pagoRepo,
             IVentaRepository ventaRepo,
             IPasarelaPago pasarela,
+            IClienteRepository clienteRepo,
             VentaService ventaService)
         {
             _pagoRepo = pagoRepo;
             _ventaRepo = ventaRepo;
             _pasarela = pasarela;
+            _clienteRepo = clienteRepo;
             _ventaService = ventaService;
         }
 

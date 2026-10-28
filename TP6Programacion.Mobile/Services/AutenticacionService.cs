@@ -164,4 +164,23 @@ public class AutenticacionService
 
         await _almacenamientoTokensService.Guardar(sesion);
     }
+    public async Task<HttpResponseMessage> EnviarConSesionOpcional(Func<HttpRequestMessage> crearSolicitud)
+    {
+        LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
+
+        if (sesion is not null && !string.IsNullOrWhiteSpace(sesion.Token))
+        {
+            try
+            {
+                return await EnviarAutenticado(crearSolicitud);
+            }
+            catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                // La sesión guardada ya no sirve: se intenta como visitante.
+            }
+        }
+
+        using HttpRequestMessage solicitud = crearSolicitud();
+        return await _httpClient.SendAsync(solicitud);
+    }
 }
