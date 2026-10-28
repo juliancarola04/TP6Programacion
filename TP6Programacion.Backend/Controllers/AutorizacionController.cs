@@ -91,25 +91,6 @@ namespace TP6Programacion.Backend.Controllers
             }
         }
 
-        [HttpGet("usuario-actual")]
-        [Authorize]
-        public async Task<ActionResult<UsuarioSesion>> ObtenerUsuarioActual()
-        {
-            int? usuarioId = User.ObtenerUsuarioId();
-
-            if (usuarioId is null)
-                return Unauthorized();
-
-            try
-            {
-                return Ok(await _usuarioService.ObtenerActual(usuarioId.Value));
-            }
-            catch (SesionInvalidaException e)
-            {
-                return Unauthorized(e.Message);
-            }
-        }
-
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<ActionResult<RegisterResponse>> Register(RegisterRequest registerRequest)

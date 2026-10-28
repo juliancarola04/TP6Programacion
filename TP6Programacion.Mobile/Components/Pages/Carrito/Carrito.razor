@@ -8,8 +8,8 @@
 @inject NavigationManager Navigation
 @inject CarritoService CarritoService
 @inject CatalogoService CatalogoService
+@attribute [Authorize(Roles = "Cliente")]
 @inject ComprasService ComprasService
-@attribute [Authorize]
 
 <PageTitle>Mi carrito</PageTitle>
 

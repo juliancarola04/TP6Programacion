@@ -1,8 +1,12 @@
+using System.Net;
 using TP6Programacion.Shared.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 using TP6Programacion.Shared.DTO.Auth.Request;
 using TP6Programacion.Shared.DTO.Auth.Response;
+using TP6Programacion.Shared.Enums;
 
 namespace TP6Programacion.Mobile.Services;
 
@@ -16,20 +20,7 @@ public class AutenticacionService
         _httpClient = httpClient;
         _almacenamientoTokensService = almacenamientoTokensService;
     }
-
-    public async Task<UsuarioSesion> ObtenerUsuarioSesion()
-    {
-        using HttpResponseMessage respuesta = await EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, "api/auth/usuario-actual"));
-        respuesta.EnsureSuccessStatusCode();
-
-        UsuarioSesion? usuario = await respuesta.Content.ReadFromJsonAsync<UsuarioSesion>();
-
-        if (usuario is null)
-            throw new InvalidOperationException("No se pudieron obtener los datos del usuario.");
-
-        return usuario;
-    }
-
+    
     private async Task RenovarSesion()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
@@ -164,23 +155,40 @@ public class AutenticacionService
 
         await _almacenamientoTokensService.Guardar(sesion);
     }
-    public async Task<HttpResponseMessage> EnviarConSesionOpcional(Func<HttpRequestMessage> crearSolicitud)
+    // ESTO es lo que vamos a usar!
+    public async Task<string?> ObtenerTokenVigente()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();
 
-        if (sesion is not null && !string.IsNullOrWhiteSpace(sesion.Token))
+        if (sesion is null || string.IsNullOrWhiteSpace(sesion.Token))
         {
-            try
-            {
-                return await EnviarAutenticado(crearSolicitud);
-            }
-            catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                // La sesión guardada ya no sirve: se intenta como visitante.
-            }
+            return null;
         }
 
-        using HttpRequestMessage solicitud = crearSolicitud();
-        return await _httpClient.SendAsync(solicitud);
+        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(sesion.Token);
+
+        if (jwt.ValidTo > DateTime.UtcNow)
+        {
+            return sesion.Token;
+        }
+
+        if (string.IsNullOrWhiteSpace(sesion.RefreshToken))
+        {
+            return null;
+        }
+
+        try
+        {
+            await RenovarSesion();
+        }
+        catch (HttpRequestException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            _almacenamientoTokensService.Limpiar();
+            return null;
+        }
+
+        sesion = await _almacenamientoTokensService.Obtener();
+
+        return sesion?.Token;
     }
 }

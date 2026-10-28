@@ -1,7 +1,6 @@
 @using Microsoft.AspNetCore.Authorization
 @page "/catalogo"
 @using System.Globalization
-@using System.Net
 @using System.Text.Json
 @using TP6Programacion.Mobile.Models
 @using TP6Programacion.Mobile.Services
@@ -19,8 +18,8 @@
     <MudStack Spacing="4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
             <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
-
-            <AuthorizeView>
+            
+            <AuthorizeView Roles="Cliente">
                 <Authorized>
                     <MudButton Href="/carrito" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ShoppingCart">
                         Ver carrito
@@ -99,15 +98,17 @@
                                 }
                             </MudCardContent>
                             
-                            <MudCardActions>
-                                <MudButton Color="Color.Primary"
-                                           Variant="Variant.Filled"
-                                           StartIcon="@Icons.Material.Filled.AddShoppingCart"
-                                           Disabled="@(producto.Stock <= 0 || _agregando)"
-                                           OnClick="@(() => AgregarAlCarrito(producto))">
-                                    Añadir al carrito
-                                </MudButton>
-                            </MudCardActions>
+                            <AuthorizeView Roles="Cliente">
+                                <MudCardActions>
+                                    <MudButton Color="Color.Primary"
+                                               Variant="Variant.Filled"
+                                               StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                                               Disabled="@(producto.Stock <= 0 || _agregando)"
+                                               OnClick="@(() => AgregarAlCarrito(producto))">
+                                        Añadir al carrito
+                                    </MudButton>
+                                </MudCardActions>
+                            </AuthorizeView>
                         </MudCard>
                     </MudItem>
                 }

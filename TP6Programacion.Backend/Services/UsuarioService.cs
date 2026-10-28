@@ -23,16 +23,6 @@ namespace TP6Programacion.Backend.Services
             _tokenService = tokenService;
         }
 
-        public async Task<UsuarioSesion> ObtenerActual(int id)
-        {
-            Usuario? usuario = await _repo.BuscarPorId(id);
-
-            if (usuario is null || usuario.Eliminado)
-                throw new SesionInvalidaException();
-
-            return new UsuarioSesion(usuario.Id, usuario.Username, usuario.Email, usuario.Rol);
-        }
-
         public async Task CambiarRol(int id, Rol rol)
         {
             if (!Enum.IsDefined(rol))

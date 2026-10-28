@@ -20,7 +20,7 @@ public class CarritoService
     {
         var estado = await _estadoAutenticacion.GetAuthenticationStateAsync();
         
-        string? id = estado.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        string? id = estado.User.FindFirst("sub")?.Value;
 
         if (!int.TryParse(id, out int usuarioId) || usuarioId <= 0)
         {

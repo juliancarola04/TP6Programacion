@@ -5,6 +5,8 @@
         NotFoundPage="typeof(Pages.NotFound)"
         OnNavigateAsync="AlNavegar">
 
+    @* Comprueba para cada página que el usuario pueda verlo según sus permisos. También hace la distinción
+    en el caso de que ni siquiera esté logeado. *@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
             <NotAuthorized Context="estado">
