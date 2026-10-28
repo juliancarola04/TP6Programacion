@@ -4,7 +4,7 @@
 @inject ISnackbar Snackbar
 @inject CarritoService CarritoService
 @inject CatalogoService CatalogoService
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Cliente")]
 
 <MudContainer MaxWidth="MaxWidth.Small">
     <MudText Typo="Typo.h5">Mi carrito</MudText>

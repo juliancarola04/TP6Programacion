@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @using System.Security.Claims
+@inject NavigationManager Navigation
+
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -27,8 +29,20 @@
     </Authorized>
 
     <NotAuthorized>
+        <MudButton Color="Color.Primary"
+                   OnClick="IniciarSesion">
+            Iniciar Sesion
+        </MudButton>
         <article class="content px-4">
             @Body
         </article>
     </NotAuthorized>
 </AuthorizeView>
+
+@code
+{
+    private void IniciarSesion()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

@@ -20,27 +20,7 @@ public class AutenticacionService
         _httpClient = httpClient;
         _almacenamientoTokensService = almacenamientoTokensService;
     }
-
-    public async Task<UsuarioSesion> ObtenerUsuarioSesion()
-    {
-        string? token = await ObtenerTokenVigente();
-
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            throw new HttpRequestException("No hay una sesión válida.", null, HttpStatusCode.Unauthorized);
-        }
-
-        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(token);
-
-        if (!int.TryParse(jwt.Subject, out int usuarioId) ||
-            !Enum.TryParse<Rol>(jwt.GetClaim(ClaimTypes.Role).Value, out var rol) || !Enum.IsDefined(rol))
-        {
-            throw new InvalidOperationException("Los datos del token no son válidos.");
-        }
-
-        return new UsuarioSesion(usuarioId, jwt.GetClaim("username").Value, jwt.GetClaim("email").Value, rol);
-    }
-
+    
     private async Task RenovarSesion()
     {
         LoginResponse? sesion = await _almacenamientoTokensService.Obtener();

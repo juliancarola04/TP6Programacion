@@ -58,7 +58,7 @@ public class CatalogoService
 
         string ruta = $"api/productos/catalogo?{query}";
 
-        using HttpResponseMessage respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Get, ruta));
+        using HttpResponseMessage respuesta = await _httpClient.GetAsync(ruta);
 
         respuesta.EnsureSuccessStatusCode();
 

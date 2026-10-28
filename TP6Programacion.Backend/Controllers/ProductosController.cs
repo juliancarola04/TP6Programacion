@@ -81,6 +81,7 @@ namespace TP6Programacion.Backend.Controllers
         }
 
         [HttpGet("catalogo")]
+        [AllowAnonymous]
         public async Task<ActionResult<PaginadoResponseDto<ProductoCatalogoResponse>>> ObtenerCatalogo(
             [FromQuery] ParametroPaginacionProductoRequest parametros)
         {

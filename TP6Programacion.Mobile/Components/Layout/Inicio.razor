@@ -1,0 +1,24 @@
+@page "/"
+@inject AuthenticationStateProvider Estado
+@inject NavigationManager Navigation
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var estado = await Estado.GetAuthenticationStateAsync();
+
+        if (estado.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo("/catalogo");
+        }
+        else
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}
