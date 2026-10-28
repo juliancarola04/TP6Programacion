@@ -1,6 +1,7 @@
-@using TP6Programacion.Shared.Auth
+@page "/"
 @page "/login"
 @layout AutenticacionLayout
+@using TP6Programacion.Shared.Auth
 @using TP6Programacion.Shared.DTO.Auth.Request
 @using TP6Programacion.Shared.DTO.Auth.Response
 @using TP6Programacion.Shared.ViewModels.Auth
@@ -98,10 +99,7 @@
             await AutenticacionService.IniciarSesion(request);
             await EstadoAutenticacion.Actualizar();
 
-
-            _modelo.Contrasena = string.Empty;
-
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/catalogo");
         }
         catch (InvalidOperationException e)
         {

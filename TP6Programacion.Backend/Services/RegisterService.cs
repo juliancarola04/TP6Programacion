@@ -12,7 +12,8 @@ public class RegisterService(
     IRegisterRepository repo,
     IUsuarioRepository usuarioRepository,
     ITokenService tokenService,
-    ISesionUsuarioRepository sesionRepository)
+    ISesionUsuarioRepository sesionRepository,
+    IClienteRepository clienteRepository)
 {
     public Task<RegisterResponse> Registrarse(RegisterRequest request) => CrearCuenta(request, Rol.Cliente);
     // todo el que se registra es cliente hasta que lo de de alta un admin.
@@ -59,6 +60,17 @@ public class RegisterService(
     private async Task<RegisterResponse> CrearCuenta(RegisterRequest request, Rol rol)
     {
         Usuario usuario = await CrearUsuario(request.Username, request.Password, request.Email, rol);
+        Cliente cliente = new()
+        {
+            Nombre = request.Nombre.Trim(),
+            Dni = request.Dni.Trim(),
+            Telefono = request.Telefono.Trim(),
+            Email = request.Email.Trim(),
+            Direccion = request.Direccion.Trim(),
+            UsuarioId = usuario.Id
+        };
+    await clienteRepository.Crear(cliente);
+
         var (token, _) = tokenService.CrearToken(usuario);
         var refreshToken = tokenService.CrearRefreshToken();
         var sesion = new SesionUsuario

@@ -13,7 +13,7 @@ namespace TP6Programacion.Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    
     public class ProductosController : ControllerBase
     {
         private readonly ProductoService _productoService;

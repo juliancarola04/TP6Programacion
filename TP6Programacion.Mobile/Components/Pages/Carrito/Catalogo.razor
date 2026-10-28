@@ -1,5 +1,4 @@
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @page "/catalogo"
 @using System.Globalization
 @using System.Net
@@ -12,6 +11,7 @@
 @inject CarritoService CarritoService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Catálogo</PageTitle>
 
@@ -20,9 +20,18 @@
         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
             <MudText Typo="Typo.h4" HtmlTag="h1">Catálogo</MudText>
 
-            <MudButton Href="/carrito" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ShoppingCart">
-                Ver carrito
-            </MudButton>
+            <AuthorizeView>
+                <Authorized>
+                    <MudButton Href="/carrito" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.ShoppingCart">
+                        Ver carrito
+                    </MudButton>
+                </Authorized>
+                <NotAuthorized>
+                    <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary">
+                        Iniciar sesión
+                    </MudButton>
+                </NotAuthorized>
+            </AuthorizeView>
         </MudStack>
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -201,6 +210,14 @@
     {
         if (_agregando)
         {
+            return;
+        }
+        AuthenticationState estado = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (estado.User.Identity?.IsAuthenticated != true)
+        {
+            Snackbar.Add("Iniciá sesión para agregar productos al carrito.", Severity.Info);
+            Navigation.NavigateTo("/login");
             return;
         }
 
