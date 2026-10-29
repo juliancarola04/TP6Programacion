@@ -122,19 +122,25 @@ namespace TP6Programacion.Backend.Services
         [Authorize(Roles = "Administrador,Cajero")]
         public async Task<VentaResponse> CrearVentaPresencial(CrearVentaPresencialRequest dto,int usuarioId)
         {
-                Cliente? cliente = await _clienteRepo.ObtenerPorId(dto.ClienteId);
+            Cliente? cliente = null;
+
+            if (dto.ClienteId.HasValue)
+            {
+                cliente = await _clienteRepo.ObtenerPorId(dto.ClienteId.Value);
+
                 if (cliente is null)
                 {
                     throw new RecursoNoExisteException("No existe ningún cliente con ese id.");
                 }
-           
+            }
+
             var (detalles, total) = await PrepararDetallesYDescontarStock(dto.Items);
 
             Venta venta = new()
             {
                 Fecha = DateTime.UtcNow,
                 Total = total,
-                ClienteId = cliente.Id,
+                ClienteId = cliente?.Id,
                 UsuarioId = usuarioId,
                 DetallesVentas = detalles,
                 Estado = EstadoVenta.Confirmada,

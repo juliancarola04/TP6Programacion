@@ -3,7 +3,7 @@
 namespace TP6Programacion.Shared.DTO.Venta.Request;
 
 public record CrearVentaPresencialRequest(
-    int ClienteId,
+    int? ClienteId,
     List<CrearVentaItemRequest> Items,
     MetodoPago Metodo,
     string? ReferenciaPago

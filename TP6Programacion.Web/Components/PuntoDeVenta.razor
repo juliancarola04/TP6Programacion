@@ -1,0 +1,276 @@
+﻿@page "/pos"
+@using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Producto.Response
+@using TP6Programacion.Shared.DTO.Venta.Request
+@using TP6Programacion.Shared.DTO.Venta.Response
+@using TP6Programacion.Shared.Enums
+@using TP6Programacion.Web.Models
+@using TP6Programacion.Web.Services
+@attribute [Authorize(Roles = "Administrador,Cajero")]
+@inject VentasService VentasService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Punto de venta</PageTitle>
+
+<div class="d-flex gap-4" style="height: calc(100vh - 7rem);">
+
+    <div class="overflow-auto" style="flex: 3 1 0; min-width: 0;">
+        <PosCatalogo @ref="_catalogo" OnProductoElegido="AgregarProducto" />
+    </div>
+
+    <MudPaper Elevation="2" Class="pa-4 d-flex flex-column" Style="flex: 2 1 0; min-width: 380px;">
+        <MudText Typo="Typo.h6" Class="mb-2">
+            Venta actual (@_lineas.Sum(l => l.Cantidad) unidades)
+        </MudText>
+
+        <div class="flex-grow-1 overflow-auto">
+            @if (_lineas.Count == 0)
+            {
+                <MudText Color="Color.Secondary">Tocá un producto del catálogo para agregarlo a la venta.</MudText>
+            }
+            else
+            {
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cant.</th>
+                            <th style="text-align: right;">Unitario</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var linea in _lineas)
+                        {
+                            <tr @key="linea.ProductoId"
+                                @onclick="() => _seleccionada = linea"
+                                style="cursor: pointer; @(linea == _seleccionada ? "background: var(--mud-palette-action-default-hover);" : "")">
+                                <td>
+                                    <MudText Typo="Typo.body2">@linea.Nombre</MudText>
+                                    <MudText Typo="Typo.caption">Disponibles: @linea.Stock</MudText>
+                                </td>
+                                <td>
+                                    <MudNumericField T="int"
+                                                     Value="linea.Cantidad"
+                                                     ValueChanged="@((int cantidad) => CambiarCantidad(linea, cantidad))"
+                                                     Min="1"
+                                                     Max="@linea.Stock"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Style="min-width: 110px;" />
+                                </td>
+                                <td style="text-align: right;">@linea.PrecioUnitario.ToString("C2", _cultura)</td>
+                                <td style="text-align: right;">@linea.Subtotal.ToString("C2", _cultura)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        <MudStack Spacing="3">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.RemoveShoppingCart"
+                       Disabled="@(_seleccionada is null || _guardando)"
+                       OnClick="QuitarSeleccionada">
+                Quitar producto
+            </MudButton>
+
+            <MudSelect T="MetodoPago"
+                       @bind-Value="_metodo"
+                       Label="Medio de pago"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Disabled="_guardando">
+                @foreach (var metodo in Enum.GetValues<MetodoPago>())
+                {
+                    <MudSelectItem T="MetodoPago" Value="@metodo">@Etiqueta(metodo)</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (_metodo != MetodoPago.Efectivo)
+            {
+                <MudTextField T="string"
+                              @bind-Value="_referencia"
+                              Label="Referencia del pago (opcional)"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Disabled="_guardando" />
+            }
+
+            <div class="d-flex align-center justify-space-between">
+                <MudText Typo="Typo.h6">Total</MudText>
+                <MudText Typo="Typo.h4">@Total.ToString("C2", _cultura)</MudText>
+            </div>
+
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           FullWidth="true"
+                           Disabled="@(_lineas.Count == 0 || _guardando)"
+                           OnClick="Cancelar">
+                    Cancelar venta
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           FullWidth="true"
+                           Disabled="@(_lineas.Count == 0 || _guardando)"
+                           OnClick="Guardar">
+                    @(_guardando ? "Guardando..." : "Guardar venta")
+                </MudButton>
+            </div>
+        </MudStack>
+    </MudPaper>
+</div>
+
+@code {
+    private static readonly CultureInfo _cultura = CultureInfo.GetCultureInfo("es-AR");
+
+    private readonly List<LineaVenta> _lineas = new();
+    private LineaVenta? _seleccionada;
+    private PosCatalogo? _catalogo;
+    private MetodoPago _metodo = MetodoPago.Efectivo;
+    private string? _referencia;
+    private bool _guardando;
+
+    private decimal Total => _lineas.Sum(l => l.Subtotal);
+
+    private static string Etiqueta(MetodoPago metodo) => metodo == MetodoPago.Qr ? "QR" : metodo.ToString();
+
+    private void AgregarProducto(ProductoCatalogoResponse producto)
+    {
+        if (producto.Stock <= 0)
+        {
+            Snackbar.Add($"'{producto.Nombre}' no tiene stock.", Severity.Warning);
+            return;
+        }
+
+        LineaVenta? linea = _lineas.FirstOrDefault(l => l.ProductoId == producto.Id);
+
+        if (linea is null)
+        {
+            linea = new LineaVenta
+            {
+                ProductoId = producto.Id,
+                Nombre = producto.Nombre,
+                PrecioUnitario = producto.PrecioVenta,
+                Stock = producto.Stock,
+                Cantidad = 1
+            };
+
+            _lineas.Add(linea);
+        }
+        else
+        {
+            linea.Stock = producto.Stock;
+            linea.PrecioUnitario = producto.PrecioVenta;
+
+            if (linea.Cantidad >= linea.Stock)
+            {
+                Snackbar.Add($"No hay más unidades de '{producto.Nombre}'.", Severity.Warning);
+            }
+            else
+            {
+                linea.Cantidad++;
+            }
+        }
+
+        _seleccionada = linea;
+    }
+
+    private void CambiarCantidad(LineaVenta linea, int cantidad)
+    {
+        linea.Cantidad = Math.Clamp(cantidad, 1, Math.Max(1, linea.Stock));
+    }
+
+    private void QuitarSeleccionada()
+    {
+        if (_seleccionada is null)
+        {
+            return;
+        }
+
+        _lineas.Remove(_seleccionada);
+        _seleccionada = null;
+    }
+
+    private async Task Cancelar()
+    {
+        if (_lineas.Count == 0)
+        {
+            return;
+        }
+
+        bool? confirmado = await DialogService.ShowMessageBoxAsync(
+            "Cancelar venta",
+            "Se van a descartar todos los productos de la venta actual.",
+            yesText: "Sí, cancelar",
+            cancelText: "Seguir vendiendo");
+
+        if (confirmado == true)
+        {
+            Reiniciar();
+        }
+    }
+
+    private async Task Guardar()
+    {
+        if (_guardando || _lineas.Count == 0)
+        {
+            return;
+        }
+
+        _guardando = true;
+
+        try
+        {
+            List<CrearVentaItemRequest> items = _lineas
+                .Select(l => new CrearVentaItemRequest(l.ProductoId, l.Cantidad))
+                .ToList();
+
+            string? referencia = _metodo == MetodoPago.Efectivo || string.IsNullOrWhiteSpace(_referencia)
+                ? null
+                : _referencia.Trim();
+
+            CrearVentaPresencialRequest request = new CrearVentaPresencialRequest(null, items, _metodo, referencia);
+
+            VentaResponse venta = await VentasService.CrearVentaPresencial(request);
+
+            Snackbar.Add($"Venta #{venta.Id} guardada por {venta.Total.ToString("C2", _cultura)}.", Severity.Success);
+
+            Reiniciar();
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("No se pudo conectar con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            _guardando = false;
+        }
+
+        // El stock cambió (o el servidor nos avisó que estaba desactualizado): se refresca el catálogo.
+        if (_catalogo is not null)
+        {
+            await _catalogo.Recargar();
+        }
+    }
+
+    private void Reiniciar()
+    {
+        _lineas.Clear();
+        _seleccionada = null;
+        _metodo = MetodoPago.Efectivo;
+        _referencia = null;
+    }
+}

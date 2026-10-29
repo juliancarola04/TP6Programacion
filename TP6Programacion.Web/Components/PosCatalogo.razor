@@ -1,0 +1,230 @@
+﻿@using System.Globalization
+@using System.Text.Json
+@using TP6Programacion.Shared.DTO.Categoria.Response
+@using TP6Programacion.Shared.DTO.Paginado.Request.Producto
+@using TP6Programacion.Shared.DTO.Producto.Response
+@using TP6Programacion.Web.Services
+@inject CatalogoService CatalogoService
+@inject CategoriaService CategoriaService
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="3">
+    <MudTextField T="string"
+                  @bind-Value="_buscar"
+                  Label="Buscar por nombre"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  DebounceInterval="350"
+                  OnDebounceIntervalElapsed="Buscar" />
+
+    <div class="d-flex gap-2 overflow-auto pb-1">
+        <MudButton Size="Size.Small"
+                   Color="Color.Primary"
+                   Variant="@(_categoriaId is null ? Variant.Filled : Variant.Outlined)"
+                   OnClick="@(() => SeleccionarCategoria(null))">
+            Todas
+        </MudButton>
+
+        @foreach (var categoria in _categorias)
+        {
+            <MudButton @key="categoria.Id"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Style="white-space: nowrap;"
+                       Variant="@(_categoriaId == categoria.Id ? Variant.Filled : Variant.Outlined)"
+                       OnClick="@(() => SeleccionarCategoria(categoria.Id))">
+                @categoria.Nombre
+            </MudButton>
+        }
+    </div>
+
+    @if (_cargando)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <MudButton OnClick="Recargar" Color="Color.Primary">Reintentar</MudButton>
+    }
+    else if (!_cargando && _productos.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No se encontraron productos.</MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="2">
+            @foreach (var producto in _productos)
+            {
+                <MudItem @key="producto.Id" xs="6" sm="4" lg="3" xl="2">
+                    <div @onclick="() => Elegir(producto)"
+                         style="height: 100%; cursor: @(producto.Stock > 0 ? "pointer" : "not-allowed");">
+                        <MudCard Style="@(producto.Stock > 0 ? "height: 100%;" : "height: 100%; opacity: 0.55;")">
+                            @if (producto.Imagen is not null)
+                            {
+                                <MudCardMedia Image="@producto.Imagen.Url" Height="110" />
+                            }
+                            else
+                            {
+                                <div class="d-flex align-center justify-center mud-background-gray"
+                                     style="height: 110px;"
+                                     aria-label="Producto sin imagen">
+                                    <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Large" />
+                                </div>
+                            }
+
+                            <MudCardContent Class="pa-3">
+                                <MudText Typo="Typo.caption">#@producto.Id</MudText>
+                                <MudText Typo="Typo.subtitle2">@producto.Nombre</MudText>
+                                @if (producto.Stock > 0)
+                                {
+                                    <MudText Typo="Typo.body2">@producto.Stock disponibles</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Error">Sin stock</MudText>
+                                }
+                                <MudText Typo="Typo.subtitle1" Color="Color.Primary">
+                                    @producto.PrecioVenta.ToString("C2", _cultura)
+                                </MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+
+        @if (_totalPaginas > 1)
+        {
+            <MudPagination Count="_totalPaginas" Selected="_pagina" SelectedChanged="CambiarPagina" Color="Color.Primary" />
+        }
+    }
+</MudStack>
+
+@code {
+    private static readonly CultureInfo _cultura = CultureInfo.GetCultureInfo("es-AR");
+
+    [Parameter] public EventCallback<ProductoCatalogoResponse> OnProductoElegido { get; set; }
+
+    private List<ProductoCatalogoResponse> _productos = new();
+    private List<CategoriaResponse> _categorias = new();
+    private string? _buscar;
+    private string? _busquedaAplicada;
+    private int? _categoriaId;
+    private string? _error;
+    private bool _cargando;
+    private int _pagina = 1;
+    private int _totalPaginas;
+    private int _solicitud;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(CargarCategorias(), CargarProductos());
+    }
+
+    // La llama la pantalla del POS después de guardar una venta para refrescar el stock.
+    public async Task Recargar()
+    {
+        await CargarProductos();
+    }
+
+    private async Task CargarCategorias()
+    {
+        try
+        {
+            _categorias = await CategoriaService.ObtenerCategorias();
+        }
+        catch (Exception e) when (e is HttpRequestException or InvalidOperationException or JsonException)
+        {
+            Snackbar.Add($"No se pudieron cargar las categorías: {e.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task CargarProductos()
+    {
+        int solicitud = ++_solicitud;
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            var parametros = new ParametroPaginacionProductoRequest
+            {
+                NumeroPagina = _pagina,
+                TamanoPagina = 12,
+                CategoriaId = _categoriaId,
+                Buscar = _busquedaAplicada,
+                OrdenarPor = "nombre",
+                Direccion = "asc"
+            };
+
+            var resultado = await CatalogoService.ObtenerCatalogo(parametros);
+
+            if (solicitud != _solicitud)
+            {
+                return;
+            }
+
+            _productos = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+        }
+        catch (HttpRequestException)
+        {
+            if (solicitud == _solicitud)
+            {
+                _error = "No se pudo cargar el catálogo. Verificá la conexión con el servidor.";
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            if (solicitud == _solicitud)
+            {
+                _error = e.Message;
+            }
+        }
+        catch (JsonException)
+        {
+            if (solicitud == _solicitud)
+            {
+                _error = "El servidor devolvió una respuesta de catálogo inválida.";
+            }
+        }
+        finally
+        {
+            if (solicitud == _solicitud)
+            {
+                _cargando = false;
+            }
+        }
+    }
+
+    private async Task Buscar(string texto)
+    {
+        _busquedaAplicada = texto?.Trim();
+        _pagina = 1;
+        await CargarProductos();
+    }
+
+    private async Task SeleccionarCategoria(int? categoriaId)
+    {
+        _categoriaId = categoriaId;
+        _pagina = 1;
+        await CargarProductos();
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        _pagina = pagina;
+        await CargarProductos();
+    }
+
+    private async Task Elegir(ProductoCatalogoResponse producto)
+    {
+        await OnProductoElegido.InvokeAsync(producto);
+    }
+}

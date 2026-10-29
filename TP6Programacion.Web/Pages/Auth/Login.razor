@@ -80,8 +80,9 @@
             LoginRequest request = new LoginRequest(_modelo.Usuario, _modelo.Contrasena);
 
             await AutenticacionService.IniciarSesion(request);
+            //await EstadoAutenticacion.Actualizar();
 
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/pos");
         }
         catch (InvalidOperationException e)
         {
