@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="TP6Programacion.Backend/TP6Programacion.Backend.csproj" />
-  <Project Path="TP6Programacion.Mobile/TP6Programacion.Mobile.csproj" />
+  <Project Path="TP6Programacion.Mobile/TP6Programacion.Mobile.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
   <Project Path="TP6Programacion.Shared/TP6Programacion.Shared.csproj" />
   <Project Path="TP6Programacion.Web/TP6Programacion.Web.csproj" />
 </Solution>

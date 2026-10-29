@@ -1,0 +1,434 @@
+﻿@page "/productos"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador")]
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@using TP6Programacion.Shared.DTO.Paginado.Request.Producto
+@using TP6Programacion.Shared.DTO.Paginado.Response
+@using TP6Programacion.Shared.DTO.Producto.Response
+@using TP6Programacion.Shared.DTO.Categoria.Response
+@using TP6Programacion.Web.Services
+
+@inject ProductoService ProductoService
+@inject CategoriaService CategoriaService
+@inject NavigationManager Navigation
+
+<PageTitle>Productos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6">
+
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        Administración de productos
+    </MudText>
+
+    <MudText Typo="Typo.body2" Color="Color.Primary" Class="mb-4">
+        Consultá, buscá y administrá los productos del sistema.
+    </MudText>
+
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudGrid Spacing="3">
+
+            <MudItem xs="12" md="4">
+                <MudTextField T="string"
+                              Label="Buscar producto"
+                              Placeholder="Nombre del producto..."
+                              @bind-Value="busqueda"
+                              Immediate="true"
+                              Clearable="true"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudSelect T="int?"
+                           Label="Categoría"
+                           @bind-Value="categoriaSeleccionada"
+                           Clearable="true"
+                           Variant="Variant.Outlined">
+                    @foreach (var categoria in categorias)
+                    {
+                        <MudSelectItem T="int?"
+                                       Value="@((int?)categoria.Id)">
+                            @categoria.Nombre
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudSelect T="string"
+                           Label="Ordenar por"
+                           @bind-Value="ordenarPor"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem T="string" Value="@("id")">ID</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("nombre")">Nombre</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("precio")">Precio de venta</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("stock")">Stock</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Sort"
+                           FullWidth="true"
+                           Class="mt-2"
+                           OnClick="CambiarDireccion">
+                    @(direccion == "asc" ? "Ascendente" : "Descendente")
+                </MudButton>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Search"
+                           FullWidth="true"
+                           OnClick="BuscarProductos">
+                    Buscar
+                </MudButton>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.FilterAltOff"
+                           FullWidth="true"
+                           OnClick="LimpiarFiltros">
+                    Limpiar filtros
+                </MudButton>
+            </MudItem>
+
+        </MudGrid>
+    </MudPaper>
+
+    <MudStack Row="true"
+              Justify="Justify.SpaceBetween"
+              AlignItems="AlignItems.Center"
+              Class="mb-4">
+        <MudText Typo="Typo.body2">
+            @if (resultado is not null)
+            {
+                <span>Total de productos: @resultado.TotalRegistros</span>
+            }
+        </MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="CrearProducto">
+            Nuevo producto
+        </MudButton>
+    </MudStack>
+
+    @if (cargando)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="mt-2">Cargando productos...</MudText>
+    }
+    else if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @error
+        </MudAlert>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   OnClick="CargarProductos">
+            Reintentar
+        </MudButton>
+    }
+    else if (resultado is not null)
+    {
+        <MudTable T="ProductoListadoResponse"
+                  Items="@resultado.Datos"
+                  Hover="true"
+                  Striped="true"
+                  Bordered="true"
+                  Dense="true"
+                  Elevation="1">
+
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Nombre</MudTh>
+                <MudTh>Categoría</MudTh>
+                <MudTh>Precio de compra</MudTh>
+                <MudTh>Precio de venta</MudTh>
+                <MudTh>Stock</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                <MudTd DataLabel="Categoría">
+                    @(categorias.FirstOrDefault(c => c.Id == context.CategoriaId)?.Nombre
+                        ?? $"Categoría #{context.CategoriaId}")
+                </MudTd>
+                <MudTd DataLabel="Precio de compra">
+                    @context.PrecioCompra.ToString("C")
+                </MudTd>
+                <MudTd DataLabel="Precio de venta">
+                    @context.PrecioVenta.ToString("C")
+                </MudTd>
+                <MudTd DataLabel="Stock">
+                    @context.Stock
+                </MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Color="Color.Primary"
+                                   Title="Editar producto"
+                                   OnClick="@(() => EditarProducto(context.Id))" />
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Color="Color.Error"
+                                   Title="Eliminar producto"
+                                   OnClick="@(() => SolicitarEliminacion(context))" />
+                </MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText Class="pa-4">No se encontraron productos.</MudText>
+            </NoRecordsContent>
+
+        </MudTable>
+
+        <MudPaper Elevation="0" Class="pa-3 mt-3">
+            <MudStack Row="true"
+                      Justify="Justify.SpaceBetween"
+                      AlignItems="AlignItems.Center">
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@(!resultado.TienePaginaAnterior)"
+                           StartIcon="@Icons.Material.Filled.ChevronLeft"
+                           OnClick="PaginaAnterior">
+                    Anterior
+                </MudButton>
+
+                <MudText Typo="Typo.body2">
+                    Página @resultado.NumeroPagina de @resultado.TotalPaginas
+                </MudText>
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@(!resultado.TienePaginaPosterior)"
+                           EndIcon="@Icons.Material.Filled.ChevronRight"
+                           OnClick="PaginaSiguiente">
+                    Siguiente
+                </MudButton>
+
+            </MudStack>
+        </MudPaper>
+    }
+
+    @if (productoAEliminar is not null)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mt-4">
+            <MudText Typo="Typo.subtitle1">
+                ¿Querés eliminar el producto "@productoAEliminar.Nombre"?
+            </MudText>
+
+            <MudText Typo="Typo.body2">
+                Esta operación se enviará al backend.
+            </MudText>
+
+            <MudStack Row="true" Class="mt-3">
+                <MudButton Color="Color.Error"
+                           Variant="Variant.Filled"
+                           Disabled="@eliminando"
+                           OnClick="ConfirmarEliminacion">
+                    Sí, eliminar
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Disabled="@eliminando"
+                           OnClick="CancelarEliminacion">
+                    Cancelar
+                </MudButton>
+            </MudStack>
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensaje))
+    {
+        <MudAlert Severity="@tipoMensaje" Class="mt-4" ShowCloseIcon="true">
+            @mensaje
+        </MudAlert>
+    }
+
+</MudContainer>
+
+@code {
+    private List<CategoriaResponse> categorias = new();
+
+    private PaginadoResponseDto<ProductoListadoResponse>? resultado;
+
+    private string? busqueda;
+    private int? categoriaSeleccionada;
+    private string ordenarPor = "id";
+    private string direccion = "asc";
+
+    private bool cargando;
+    private bool eliminando;
+    private string? error;
+    private string? mensaje;
+    private Severity tipoMensaje = Severity.Info;
+
+    private ProductoListadoResponse? productoAEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categorias = await CategoriaService.ObtenerCategorias();
+            await CargarProductos();
+        }
+        catch (Exception)
+        {
+            error = "No se pudieron cargar las categorías o los productos.";
+        }
+    }
+
+    private async Task CargarProductos()
+    {
+        cargando = true;
+        error = null;
+
+        try
+        {
+            var parametros = new ParametroPaginacionProductoRequest
+            {
+                NumeroPagina = resultado?.NumeroPagina ?? 1,
+                TamanoPagina = 10,
+                Buscar = string.IsNullOrWhiteSpace(busqueda)
+                    ? null : busqueda.Trim(),
+                CategoriaId = categoriaSeleccionada,
+                OrdenarPor = ordenarPor,
+                Direccion = direccion
+            };
+
+            resultado = await ProductoService.ObtenerProductos(parametros);
+        }
+        catch (Exception)
+        {
+            error = "No se pudieron cargar los productos. Verificá tu sesión y la conexión con el backend.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task BuscarProductos()
+    {
+        mensaje = null;
+
+        if (resultado is not null)
+        {
+            resultado = resultado with { NumeroPagina = 1 };
+        }
+        else
+        {
+            resultado = new PaginadoResponseDto<ProductoListadoResponse>(
+                1, 10, 0, 0, false, false, new());
+        }
+
+        await CargarProductos();
+    }
+
+    private async Task LimpiarFiltros()
+    {
+        busqueda = null;
+        categoriaSeleccionada = null;
+        ordenarPor = "id";
+        direccion = "asc";
+        mensaje = null;
+
+        resultado = new PaginadoResponseDto<ProductoListadoResponse>(
+            1, 10, 0, 0, false, false, new());
+
+        await CargarProductos();
+    }
+
+    private async Task CambiarDireccion()
+    {
+        direccion = direccion == "asc" ? "desc" : "asc";
+        await BuscarProductos();
+    }
+
+    private async Task PaginaAnterior()
+    {
+        if (resultado is null || !resultado.TienePaginaAnterior)
+            return;
+
+        resultado = resultado with
+        {
+            NumeroPagina = resultado.NumeroPagina - 1
+        };
+
+        await CargarProductos();
+    }
+
+    private async Task PaginaSiguiente()
+    {
+        if (resultado is null || !resultado.TienePaginaPosterior)
+            return;
+
+        resultado = resultado with
+        {
+            NumeroPagina = resultado.NumeroPagina + 1
+        };
+
+        await CargarProductos();
+    }
+
+    private void CrearProducto()
+    {
+        Navigation.NavigateTo("/productos/nuevo");
+    }
+
+    private void EditarProducto(int id)
+    {
+        Navigation.NavigateTo($"/productos/editar/{id}");
+    }
+
+    private void SolicitarEliminacion(ProductoListadoResponse producto)
+    {
+        productoAEliminar = producto;
+        mensaje = null;
+    }
+
+    private void CancelarEliminacion()
+    {
+        productoAEliminar = null;
+    }
+
+    private async Task ConfirmarEliminacion()
+    {
+        if (productoAEliminar is null)
+            return;
+
+        eliminando = true;
+        error = null;
+        mensaje = null;
+
+        try
+        {
+            await ProductoService.EliminarProducto(productoAEliminar.Id);
+
+            mensaje = $"El producto '{productoAEliminar.Nombre}' fue eliminado.";
+            tipoMensaje = Severity.Success;
+            productoAEliminar = null;
+
+            await CargarProductos();
+        }
+        catch (Exception)
+        {
+            mensaje = "No se pudo eliminar el producto. Verificá si tiene restricciones asociadas o si tu sesión sigue activa.";
+            tipoMensaje = Severity.Error;
+        }
+        finally
+        {
+            eliminando = false;
+        }
+    }
+}
+
