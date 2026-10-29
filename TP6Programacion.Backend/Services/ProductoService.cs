@@ -201,12 +201,13 @@ namespace TP6Programacion.Backend.Services
                     throw new RecursoNoExisteException("No existe ningún producto con ese id.");
                 }
 
-                if (producto.Nombre != dto.Nombre && await _repo.ExistePorNombre(producto.Nombre))
+                if (producto.Nombre != dto.Nombre &&
+                    await _repo.ExistePorNombre(dto.Nombre))
                 {
-                    throw new RecursoExistenteException("Ya existe un producto con ese nombre.");
+                    throw new RecursoExistenteException(
+                        "Ya existe un producto con ese nombre.");
                 }
-
-                Categoria? categoria = await _categoriaRepository.ObtenerPorId(dto.CategoriaId);
+            Categoria? categoria = await _categoriaRepository.ObtenerPorId(dto.CategoriaId);
 
                 if (categoria is null)
                 {

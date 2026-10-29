@@ -20,6 +20,7 @@ namespace TP6Programacion.Backend.Implementacion
             IQueryable<Producto> query = _dataContext.Productos
                 .Include(p => p.Categoria)
                 .Include(p => p.Imagen)
+                .Where(p => !p.Eliminado)
                 .AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(parametros.Buscar))
@@ -82,10 +83,13 @@ namespace TP6Programacion.Backend.Implementacion
 
         public async Task Eliminar(Producto producto)
         {
-            _dataContext.Productos.Remove(producto);
+            producto.Eliminado = true;
+
+            _dataContext.Productos.Update(producto);
+
             await _dataContext.SaveChangesAsync();
         }
-        
+
         public async Task<List<Producto>> ObtenerPorIds(List<int> productoIds)
         {
             return await _dataContext.Productos

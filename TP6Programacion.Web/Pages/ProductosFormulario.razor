@@ -1,0 +1,279 @@
+﻿@page "/productos/nuevo"
+@page "/productos/editar/{Id:int}"
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using TP6Programacion.Shared.DTO.Producto.Request
+@using TP6Programacion.Shared.DTO.Producto.Response
+@using TP6Programacion.Shared.DTO.Categoria.Response
+@using TP6Programacion.Web.Services
+
+@attribute [Authorize(Roles = "Administrador")]
+
+@inject ProductoService ProductoService
+@inject CategoriaService CategoriaService
+@inject NavigationManager Navigation
+
+<PageTitle>@Titulo</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       Color="Color.Default"
+                       Title="Volver al listado"
+                       OnClick="Volver" />
+
+        <MudText Typo="Typo.h4">@Titulo</MudText>
+    </MudStack>
+
+    @if (cargando)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        <MudText Class="mt-2">Cargando datos...</MudText>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                @error
+            </MudAlert>
+        }
+
+        @if (guardado)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                @mensaje
+            </MudAlert>
+        }
+        else
+        {
+            <MudPaper Elevation="2" Class="pa-5">
+
+                <EditForm Model="@this" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+
+                    <MudStack Spacing="3">
+
+                        <MudTextField T="string"
+                                      Label="Nombre"
+                                      @bind-Value="nombre"
+                                      Required="true"
+                                      RequiredError="Ingresá el nombre del producto."
+                                      MaxLength="150"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => nombre)" />
+
+                        <MudSelect T="int?"
+                                   Label="Categoría"
+                                   @bind-Value="categoriaId"
+                                   Required="true"
+                                   RequiredError="Seleccioná una categoría."
+                                   Variant="Variant.Outlined">
+                            @foreach (var categoria in categorias)
+                            {
+                                <MudSelectItem T="int?"
+                                               Value="@((int?)categoria.Id)">
+                                    @categoria.Nombre
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudNumericField T="decimal"
+                                         Label="Precio de compra"
+                                         @bind-Value="precioCompra"
+                                         Min="0"
+                                         Required="true"
+                                         RequiredError="Ingresá el precio de compra."
+                                         Variant="Variant.Outlined"
+                                         Format="N2" />
+
+                        <MudNumericField T="decimal"
+                                         Label="Precio de venta"
+                                         @bind-Value="precioVenta"
+                                         Min="0"
+                                         Required="true"
+                                         RequiredError="Ingresá el precio de venta."
+                                         Variant="Variant.Outlined"
+                                         Format="N2" />
+
+                        <MudNumericField T="int"
+                                         Label="Stock"
+                                         @bind-Value="stock"
+                                         Min="0"
+                                         Required="true"
+                                         RequiredError="Ingresá el stock."
+                                         Variant="Variant.Outlined" />
+
+                        @if (!string.IsNullOrWhiteSpace(errorValidacion))
+                        {
+                            <MudAlert Severity="Severity.Warning">
+                                @errorValidacion
+                            </MudAlert>
+                        }
+
+                        <MudStack Row="true"
+                                  Justify="Justify.FlexEnd"
+                                  Class="mt-3">
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Disabled="@guardando"
+                                       OnClick="Volver">
+                                Cancelar
+                            </MudButton>
+
+                            <MudButton ButtonType="ButtonType.Submit"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="@guardando">
+
+                                @(guardando
+                                    ? "Guardando..."
+                                    : Id.HasValue
+                                        ? "Guardar cambios"
+                                        : "Crear producto")
+                            </MudButton>
+
+                        </MudStack>
+
+                    </MudStack>
+                </EditForm>
+
+            </MudPaper>
+        }
+    }
+
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private string Titulo => Id.HasValue
+        ? "Modificar producto"
+        : "Nuevo producto";
+
+    private List<CategoriaResponse> categorias = new();
+
+    private string nombre = string.Empty;
+    private decimal precioCompra;
+    private decimal precioVenta;
+    private int stock;
+    private int? categoriaId;
+
+    private bool cargando = true;
+    private bool guardando;
+    private bool guardado;
+
+    private string? error;
+    private string? errorValidacion;
+    private string? mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categorias = await CategoriaService.ObtenerCategorias();
+
+            if (Id.HasValue)
+            {
+                var producto = await ProductoService.ObtenerProducto(Id.Value);
+
+                nombre = producto.Nombre;
+                precioCompra = producto.PrecioCompra;
+                precioVenta = producto.PrecioVenta;
+                stock = producto.Stock;
+                categoriaId = producto.CategoriaId;
+            }
+        }
+        catch (Exception)
+        {
+            error = Id.HasValue
+                ? "No se pudo cargar el producto. Verificá tu sesión y la conexión con el backend."
+                : "No se pudieron cargar las categorías. Verificá tu sesión y la conexión con el backend.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        error = null;
+        errorValidacion = null;
+
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            errorValidacion = "El nombre del producto es obligatorio.";
+            return;
+        }
+
+        if (!categoriaId.HasValue)
+        {
+            errorValidacion = "Seleccioná una categoría.";
+            return;
+        }
+
+        if (precioCompra < 0 || precioVenta < 0 || stock < 0)
+        {
+            errorValidacion = "Los precios y el stock no pueden ser negativos.";
+            return;
+        }
+
+        guardando = true;
+
+        try
+        {
+            if (Id.HasValue)
+            {
+                var request = new ActualizarProductoRequest(
+                    nombre.Trim(),
+                    precioCompra,
+                    precioVenta,
+                    stock,
+                    categoriaId.Value);
+
+                await ProductoService.ActualizarProducto(Id.Value, request);
+
+                mensaje = "El producto se modificó correctamente.";
+            }
+            else
+            {
+                var request = new CrearProductoRequest(
+                    nombre.Trim(),
+                    precioCompra,
+                    precioVenta,
+                    stock,
+                    categoriaId.Value);
+
+                await ProductoService.CrearProducto(request);
+
+                mensaje = "El producto se creó correctamente.";
+            }
+
+            guardado = true;
+
+            await Task.Delay(900);
+            Navigation.NavigateTo("/productos");
+        }
+        catch (Exception)
+        {
+            error = Id.HasValue
+                ? "No se pudo modificar el producto. Verificá los datos y tu sesión."
+                : "No se pudo crear el producto. Verificá los datos y tu sesión.";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void Volver()
+    {
+        Navigation.NavigateTo("/productos");
+    }
+}
