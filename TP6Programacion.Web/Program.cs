@@ -19,5 +19,8 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<EstadoAutenticacionProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<EstadoAutenticacionProvider>());
-
+builder.Services.AddScoped<CatalogoService>();
+builder.Services.AddScoped<CategoriaService>();
+builder.Services.AddScoped<VentasService>();
+builder.Services.AddScoped<ProductoService>();
 await builder.Build().RunAsync();

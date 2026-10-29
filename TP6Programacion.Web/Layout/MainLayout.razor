@@ -12,10 +12,14 @@ lo guardamos en la variable estado (termina siendo el usuario a fin de cuentas)*
 <AuthorizeView Context="estado">
     <Authorized>
         <div class="page">
+            <AuthorizeView Roles="Administrador">
+            <Authorized>
+
             <div class="sidebar">
                 <NavMenu />
             </div>
-
+                </Authorized>
+            </AuthorizeView>
             <main>
                 <div class="top-row px-4">
                     <span>@estado.User.Identity?.Name (@estado.User.FindFirst(ClaimTypes.Role)?.Value)</span>
