@@ -28,7 +28,7 @@ namespace TP6Programacion.Backend.Controllers
 
         [HttpPost("{id}/imagen")]
         [Authorize(Roles = "Administrador")]
-        public async Task<ActionResult<ProductoImagenResponse>> SubirImagen(int id, IFormFile archivo)
+        public async Task<ActionResult<ProductoImagenResponse>> SubirImagen(int id,[FromForm] IFormFile archivo)
         {
             try
             {
