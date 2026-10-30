@@ -1,0 +1,270 @@
+﻿@page "/categorias"
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Categoria.Request
+@using TP6Programacion.Shared.DTO.Categoria.Response
+@using TP6Programacion.Web.Services
+@attribute [Authorize(Roles = "Administrador")]
+@inject CategoriaService CategoriaService
+@inject ISnackbar Snackbar
+
+<PageTitle>Categorías</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5">Categorías</MudText>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="_ocupado" OnClick="Nueva">
+            Nueva categoría
+        </MudButton>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_mostrarFormulario)
+        {
+            <MudPaper Class="pa-4">
+                <MudForm @ref="_formulario" Disabled="_ocupado">
+                    <MudStack Spacing="3">
+                        @if (_idEdicion.HasValue)
+                        {
+                            <MudText Typo="Typo.h6">Editar categoría</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h6">Nueva categoría</MudText>
+                        }
+
+                        <MudTextField T="string" Label="Nombre"
+                                      @bind-Value="_nombre"
+                                      Required="true"
+                                      RequiredError="Ingresá un nombre."
+                                      MaxLength="30" />
+
+                        <MudTextField T="string" Label="Descripción"
+                                      @bind-Value="_descripcion"
+                                      Required="true"
+                                      RequiredError="Ingresá una descripción."
+                                      MaxLength="600" Lines="3" />
+
+                        <MudStack Row="true">
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                       Disabled="_ocupado" OnClick="Guardar">
+                                Guardar
+                            </MudButton>
+
+                            <MudButton Disabled="_ocupado" OnClick="Cancelar">
+                                Cancelar
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+        }
+
+        @if (_categoriaAEliminar is not null)
+        {
+            <MudAlert Severity="Severity.Warning">
+                ¿Eliminar la categoría @_categoriaAEliminar.Nombre?
+
+                <MudButton Color="Color.Error" Disabled="_ocupado" OnClick="Eliminar">
+                    Eliminar
+                </MudButton>
+
+                <MudButton Disabled="_ocupado" OnClick="CancelarEliminacion">
+                    Cancelar
+                </MudButton>
+            </MudAlert>
+        }
+
+        <MudTable T="CategoriaResponse" Items="_categorias"
+                  Loading="_ocupado" Hover="true" RowsPerPage="10">
+            <HeaderContent>
+                <MudTh>Nombre</MudTh>
+                <MudTh>Descripción</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                <MudTd DataLabel="Descripción">@context.Descripcion</MudTd>
+
+                <MudTd DataLabel="Acciones">
+                    <MudButton Disabled="_ocupado" OnClick="@(() => Editar(context))">
+                        Editar
+                    </MudButton>
+
+                    <MudButton Color="Color.Error" Disabled="_ocupado"
+                               OnClick="@(() => ConfirmarEliminacion(context))">
+                        Eliminar
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText>No hay categorías.</MudText>
+            </NoRecordsContent>
+
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<CategoriaResponse> _categorias = new();
+    private CategoriaResponse? _categoriaAEliminar;
+    private MudForm _formulario = null!;
+    private int? _idEdicion;
+    private string _nombre = string.Empty;
+    private string _descripcion = string.Empty;
+    private string? _error;
+    private bool _mostrarFormulario;
+    private bool _ocupado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            _categorias = await CategoriaService.ObtenerCategorias();
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudieron cargar las categorías.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private void Nueva()
+    {
+        _idEdicion = null;
+        _nombre = string.Empty;
+        _descripcion = string.Empty;
+        _categoriaAEliminar = null;
+        _error = null;
+        _mostrarFormulario = true;
+    }
+
+    private void Editar(CategoriaResponse categoria)
+    {
+        _idEdicion = categoria.Id;
+        _nombre = categoria.Nombre;
+        _descripcion = categoria.Descripcion;
+        _categoriaAEliminar = null;
+        _error = null;
+        _mostrarFormulario = true;
+    }
+
+    private void Cancelar()
+    {
+        _mostrarFormulario = false;
+    }
+
+    private void ConfirmarEliminacion(CategoriaResponse categoria)
+    {
+        _categoriaAEliminar = categoria;
+        _mostrarFormulario = false;
+        _error = null;
+    }
+
+    private void CancelarEliminacion()
+    {
+        _categoriaAEliminar = null;
+    }
+
+    private async Task Guardar()
+    {
+        if (_ocupado)
+            return;
+
+        await _formulario.ValidateAsync();
+
+        if (!_formulario.IsValid)
+            return;
+
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            if (_idEdicion.HasValue)
+            {
+                int id = _idEdicion.Value;
+
+                await CategoriaService.Actualizar(id, new ActualizarCategoriaRequest(_nombre.Trim(), _descripcion.Trim()));
+            }
+            else
+            {
+                await CategoriaService.Crear(new CrearCategoriaRequest(_nombre.Trim(), _descripcion.Trim()));
+            }
+
+            _mostrarFormulario = false;
+            Snackbar.Add("Categoría guardada.", Severity.Success);
+
+            _categorias = await CategoriaService.ObtenerCategorias();
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la operación.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private async Task Eliminar()
+    {
+        if (_categoriaAEliminar is null || _ocupado)
+            return;
+
+        int id = _categoriaAEliminar.Id;
+
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            await CategoriaService.Eliminar(id);
+
+            _categoriaAEliminar = null;
+            Snackbar.Add("Categoría eliminada.", Severity.Success);
+
+            _categorias = await CategoriaService.ObtenerCategorias();
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la operación.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+}

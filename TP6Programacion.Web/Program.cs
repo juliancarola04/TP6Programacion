@@ -23,4 +23,5 @@ builder.Services.AddScoped<CatalogoService>();
 builder.Services.AddScoped<CategoriaService>();
 builder.Services.AddScoped<VentasService>();
 builder.Services.AddScoped<ProductoService>();
+builder.Services.AddScoped<ProveedorService>();
 await builder.Build().RunAsync();
