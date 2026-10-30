@@ -26,7 +26,7 @@ public class IngresoRepositoryPsqlEF : IIngresoRepository
             query = query.Where(i => i.ProveedorId == parametros.ProveedorId.Value);
 
         if (parametros.Anulado.HasValue)
-            query = query.Where(i => i.Anulado == parametros.Anulado.HasValue);
+            query = query.Where(i => i.Anulado == parametros.Anulado.Value);
 
         if (!string.IsNullOrWhiteSpace(parametros.Buscar))
         {

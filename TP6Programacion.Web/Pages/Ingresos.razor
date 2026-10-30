@@ -1,0 +1,379 @@
+﻿@page "/ingresos"
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Ingreso.Response
+@using TP6Programacion.Shared.DTO.Paginado.Request.Ingreso
+@using TP6Programacion.Shared.DTO.Proveedor.Response
+@using TP6Programacion.Shared.DTO.Paginado.Response
+@using TP6Programacion.Web.Services
+@attribute [Authorize(Roles = "Administrador")]
+
+@inject IngresoService IngresoService
+@inject ProveedorService ProveedorService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Ingresos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+
+    <MudStack Row="true" AlignItems="AlignItems.Center"
+              Justify="Justify.SpaceBetween" Class="mb-4">
+
+        <MudText Typo="Typo.h4">Ingresos</MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/ingresos/nuevo"))">
+            Registrar ingreso
+        </MudButton>
+
+    </MudStack>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">
+            @error
+        </MudAlert>
+    }
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+
+        <MudGrid Spacing="3">
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="buscar"
+                              Label="Buscar proveedor"
+                              Placeholder="Razón social..."
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Clearable="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int?"
+                           Label="Proveedor"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           @bind-Value="proveedorSeleccionado">
+
+                    @foreach (var proveedor in proveedores)
+                    {
+                        <MudSelectItem T="int?" Value="@((int?)proveedor.Id)">
+                            @proveedor.RazonSocial
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="bool?"
+                           Label="Estado"
+                           Variant="Variant.Outlined"
+                           @bind-Value="filtroAnulado">
+
+                    <MudSelectItem T="bool?" Value="@((bool?)null)">
+                        Todos
+                    </MudSelectItem>
+
+                    <MudSelectItem T="bool?" Value="@((bool?)false)">
+                        Vigentes
+                    </MudSelectItem>
+
+                    <MudSelectItem T="bool?" Value="@((bool?)true)">
+                        Anulados
+                    </MudSelectItem>
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="string"
+                           Label="Ordenar por"
+                           Variant="Variant.Outlined"
+                           @bind-Value="ordenarPor">
+
+                    <MudSelectItem Value="@("fecha")">
+                        Fecha
+                    </MudSelectItem>
+
+                    <MudSelectItem Value="@("total")">
+                        Total
+                    </MudSelectItem>
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.FilterAlt"
+                           OnClick="AplicarFiltros">
+                    Buscar
+                </MudButton>
+
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           OnClick="LimpiarFiltros"
+                           Class="ml-2">
+                    Limpiar
+                </MudButton>
+            </MudItem>
+
+        </MudGrid>
+
+    </MudPaper>
+
+    <MudPaper Elevation="1">
+
+        <MudTable T="IngresoListadoResponse"
+                  Items="@ingresos"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Loading="@cargando"
+                  Breakpoint="Breakpoint.Sm">
+
+            <NoRecordsContent>
+                No se encontraron ingresos.
+            </NoRecordsContent>
+
+            <HeaderContent>
+                <MudTh>Número</MudTh>
+                <MudTh>Fecha</MudTh>
+                <MudTh>Proveedor</MudTh>
+                <MudTh>Total</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh Class="text-center">Acciones</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Número">
+                    #@context.Id
+                </MudTd>
+
+                <MudTd DataLabel="Fecha">
+                    @context.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </MudTd>
+
+                <MudTd DataLabel="Proveedor">
+                    @context.ProveedorRazonSocial
+                </MudTd>
+
+                <MudTd DataLabel="Total">
+                    @context.Total.ToString("C2")
+                </MudTd>
+
+                <MudTd DataLabel="Estado">
+                    @if (context.Anulado)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Error"
+                                 Size="Size.Small">
+                            Anulado
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            Vigente
+                        </MudChip>
+                    }
+                </MudTd>
+
+                <MudTd DataLabel="Acciones">
+                    <MudStack Row="true"
+                              Justify="Justify.Center"
+                              Spacing="1">
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Color="Color.Info"
+                                       Title="Ver detalle"
+                                       OnClick="@(() => VerDetalle(context.Id))" />
+
+                        @if (!context.Anulado)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                           Color="Color.Error"
+                                           Title="Anular ingreso"
+                                           OnClick="@(() => ConfirmarAnulacion(context))" />
+                        }
+
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+
+        </MudTable>
+
+        @if (totalPaginas > 1)
+        {
+            <MudDivider />
+
+            <MudStack AlignItems="AlignItems.Center" Class="pa-3">
+                <MudPagination Count="@totalPaginas"
+                               Selected="@pagina"
+                               SelectedChanged="CambiarPagina"
+                               Color="Color.Primary"
+                               ShowFirstButton="true"
+                               ShowLastButton="true" />
+            </MudStack>
+        }
+
+    </MudPaper>
+
+    <MudText Typo="Typo.caption" Class="mt-2">
+        Total de registros: @totalRegistros
+    </MudText>
+
+</MudContainer>
+
+@code {
+    private List<IngresoListadoResponse> ingresos = new();
+    private List<ObtenerProveedorResponse> proveedores = new();
+
+    private bool cargando;
+    private string? error;
+
+    private string? buscar;
+    private int? proveedorSeleccionado;
+    private bool? filtroAnulado;
+
+    private string ordenarPor = "fecha";
+    private string direccion = "desc";
+
+    private int pagina = 1;
+    private const int tamanoPagina = 10;
+
+    private int totalPaginas;
+    private int totalRegistros;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarProveedores();
+        await CargarIngresos();
+    }
+
+    private async Task CargarProveedores()
+    {
+        try
+        {
+            proveedores.Clear();
+
+            int numeroPagina = 1;
+            PaginadoResponseDto<ObtenerProveedorResponse> resultado;
+
+            do
+            {
+                resultado = await ProveedorService.ObtenerProveedores(numeroPagina);
+                proveedores.AddRange(resultado.Datos);
+                numeroPagina++;
+            }
+            while (numeroPagina <= resultado.TotalPaginas);
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudieron cargar los proveedores: {ex.Message}";
+        }
+    }
+
+    private async Task CargarIngresos()
+    {
+        cargando = true;
+        error = null;
+
+        try
+        {
+            var parametros = new ParametroPaginacionIngresoRequest
+            {
+                NumeroPagina = pagina,
+                TamanoPagina = tamanoPagina,
+                Buscar = buscar,
+                ProveedorId = proveedorSeleccionado,
+                Anulado = filtroAnulado,
+                OrdenarPor = ordenarPor,
+                Direccion = direccion
+            };
+
+            var resultado = await IngresoService.ObtenerIngresos(parametros);
+
+            ingresos = resultado.Datos;
+            totalPaginas = resultado.TotalPaginas;
+            totalRegistros = resultado.TotalRegistros;
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudieron cargar los ingresos: {ex.Message}";
+            ingresos.Clear();
+            totalPaginas = 0;
+            totalRegistros = 0;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task AplicarFiltros()
+    {
+        pagina = 1;
+        await CargarIngresos();
+    }
+
+    private async Task LimpiarFiltros()
+    {
+        buscar = null;
+        proveedorSeleccionado = null;
+        filtroAnulado = null;
+        ordenarPor = "fecha";
+        direccion = "desc";
+        pagina = 1;
+
+        await CargarIngresos();
+    }
+
+    private async Task CambiarPagina(int nuevaPagina)
+    {
+        pagina = nuevaPagina;
+        await CargarIngresos();
+    }
+
+    private void VerDetalle(int id)
+    {
+        Navigation.NavigateTo($"/ingresos/{id}");
+    }
+
+    private async Task ConfirmarAnulacion(IngresoListadoResponse ingreso)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Anular ingreso",
+            $"¿Estás seguro de que deseas anular el ingreso #{ingreso.Id} del proveedor {ingreso.ProveedorRazonSocial}? Esta acción revertirá las cantidades del stock.",
+            yesText: "Anular",
+            cancelText: "Cancelar");
+
+        if (confirmar != true)
+            return;
+
+        try
+        {
+            await IngresoService.AnularIngreso(ingreso.Id);
+
+            Snackbar.Add(
+                "El ingreso fue anulado correctamente.",
+                Severity.Success);
+
+            await CargarIngresos();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"No se pudo anular el ingreso: {ex.Message}",
+                Severity.Error);
+        }
+    }
+}
