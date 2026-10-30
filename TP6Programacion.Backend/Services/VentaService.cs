@@ -10,6 +10,7 @@ using TP6Programacion.Shared.DTO.Paginado.Request.Venta;
 using TP6Programacion.Shared.DTO.Venta.Request;
 using TP6Programacion.Shared.DTO.Venta.Response;
 using TP6Programacion.Shared.Enums;
+using TP6Programacion.Shared.DTO.PDFs.Response;
 
 namespace TP6Programacion.Backend.Services
 {
@@ -433,6 +434,22 @@ namespace TP6Programacion.Backend.Services
                 .FirstOrDefault(p => p.Estado == EstadoPago.Pendiente);
 
             await CancelarReservaPendiente(venta, pago);
+        }
+
+        // Este, Sol, lo agregué para el tema del ticket del lado de la app.
+        public async Task<ComprobanteVentaResponse> ObtenerParaTicket(int id, int usuarioId)
+        {
+            Cliente? cliente = await _clienteRepo.ObtenerPorUsuarioId(usuarioId);
+            Venta? venta = await _repo.ObtenerParaTicket(id);
+
+            if (venta is null || cliente is null || venta.ClienteId != cliente.Id)
+            {
+                throw new RecursoNoExisteException("No existe ninguna compra con ese id.");
+            }
+
+            var pagos = venta.Pagos.OrderBy(p => p.Fecha).ThenBy(p => p.Id).Select(p => new PagoComprobanteResponse(p.Monto, p.Metodo, p.ReferenciaPago, p.Estado)).ToList();
+
+            return new ComprobanteVentaResponse(MapearADto(venta), pagos);
         }
     }
 }

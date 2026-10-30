@@ -18,5 +18,13 @@
                 Catálogo
             </MudNavLink>
         </div>
+
+        <AuthorizeView Roles="Cliente">
+            <div class="nav-item px-3">
+                <MudNavLink Href="/mis-compras" Icon="@Icons.Material.Filled.ReceiptLong">
+                    Mis compras
+                </MudNavLink>
+            </div>
+        </AuthorizeView>
     </MudNavMenu>
 </div>

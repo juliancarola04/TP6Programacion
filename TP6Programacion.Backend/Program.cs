@@ -15,6 +15,8 @@ using TP6Programacion.Backend.Repositories;
 using TP6Programacion.Backend.Services;
 using TP6Programacion.Backend.Utilidades;
 
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community; // se pone como loquita si no agrego esto
+
 var bootstrapLogger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();

@@ -82,6 +82,34 @@ public class CarritoService
         SecureStorage.Default.Remove(clave);
     }
 
+    public async Task CambiarCantidad(int productoId, int cantidad)
+    {
+        if (cantidad < 0)
+        {
+            throw new InvalidOperationException("La cantidad no puede ser negativa!!");
+        }
+
+        List<CarritoItem> items = await Obtener();
+
+        CarritoItem item = items.FirstOrDefault(i => i.ProductoId == productoId);
+
+        if(item is null)
+        {
+            throw new InvalidOperationException("Ese producto no está en el carrito.");
+        }
+
+        if(cantidad == 0)
+        {
+            items.Remove(item);
+        }
+        else
+        {
+            item.Cantidad = cantidad;
+        }
+
+        await Guardar(items);
+    }
+
     private async Task Guardar(List<CarritoItem> items)
     {
         string clave = await ObtenerClave();
