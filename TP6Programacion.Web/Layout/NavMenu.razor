@@ -1,71 +1,48 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">TP6Programacion.Web</a>
+<MudNavMenu Class="pa-2">
+    <MudNavLink Href="/"
+                Match="NavLinkMatch.All"
+                Icon="@Icons.Material.Filled.Home">
+        Inicio
+    </MudNavLink>
 
-        <button title="Navigation menu"
-                class="navbar-toggler"
-                @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+    <MudNavGroup Title="Administración"
+                    Icon="@Icons.Material.Filled.AdminPanelSettings"
+                    Expanded="true">
 
-<div class="@NavMenuCssClass nav-scrollable"
-     @onclick="ToggleNavMenu">
-
-    <MudNavMenu>
-        <MudNavLink Href="/"
-                    Match="NavLinkMatch.All"
-                    Icon="@Icons.Material.Filled.Home">
-            Inicio
+        <MudNavLink Href="/empleados/crear"
+                    Icon="@Icons.Material.Filled.PersonAdd">
+            Crear empleado
         </MudNavLink>
 
-                <MudNavGroup Title="Administración"
-                             Icon="@Icons.Material.Filled.AdminPanelSettings"
-                             Expanded="true">
+        <MudNavLink Href="/productos"
+                    Icon="@Icons.Material.Filled.Inventory2">
+            Productos
+        </MudNavLink>
 
-                    <MudNavLink Href="/empleados/crear"
-                                Icon="@Icons.Material.Filled.PersonAdd">
-                        Crear empleado
-                    </MudNavLink>
+        <MudNavLink Href="/categorias"
+                    Icon="@Icons.Material.Filled.Category">
+            Categorías
+        </MudNavLink>
 
-                    <MudNavLink Href="/productos"
-                                Icon="@Icons.Material.Filled.Inventory2">
-                        Productos
-                    </MudNavLink>
+        <MudNavLink Href="/ingresos"
+                    Icon="@Icons.Material.Filled.MoveToInbox">
+            Ingresos
+        </MudNavLink>
 
-                    <MudNavLink Href="/categorias"
-                                Icon="@Icons.Material.Filled.Category">
-                        Categorías
-                    </MudNavLink>
+        <MudNavLink Href="/proveedores"
+                    Icon="@Icons.Material.Filled.LocalShipping">
+            Proveedores
+        </MudNavLink>
 
-                    <MudNavLink Href="/ingresos"
-                                Icon="@Icons.Material.Filled.MoveToInbox">
-                        Ingresos
-                    </MudNavLink>
-
-                    <MudNavLink Href="/proveedores"
-                                Icon="@Icons.Material.Filled.LocalShipping">
-                        Proveedores
-                    </MudNavLink>
-
-                    <MudNavLink Href="/ventas"
-                                Icon="@Icons.Material.Filled.PointOfSale">
-                        Ventas
-                    </MudNavLink>
-
-                </MudNavGroup>
-    </MudNavMenu>
-</div>
-
+        <MudNavLink Href="/ventas"
+                    Icon="@Icons.Material.Filled.PointOfSale">
+            Ventas
+        </MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>
 @code {
     private bool collapseNavMenu = true;
 
     private string? NavMenuCssClass =>
         collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
 }
