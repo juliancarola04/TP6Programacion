@@ -16,7 +16,7 @@
 <MudContainer MaxWidth="MaxWidth.Small" Style="padding-bottom: 96px;">
     <MudText Typo="Typo.h5" HtmlTag="h1">Mi carrito</MudText>
 
-    @if (_cargando)
+@if (_cargando)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
     }
@@ -33,10 +33,22 @@
         <MudList T="ProductoCarrito">
             @foreach (var producto in _productos)
             {
-                <MudListItem T="ProductoCarrito">
+                <MudListItem T="ProductoCarrito" @key="producto.ProductoId">
                     <MudText>@producto.Nombre</MudText>
+
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                        Disabled="@(_actualizando || _procesando)"
+                        OnClick="@(() => CambiarCantidad(producto, -1))" />
+
+                        <MudText>@producto.Cantidad</MudText>
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                        Disabled="@(_actualizando || _procesando || producto.Cantidad >= producto.Stock)"
+                        OnClick="@(() => CambiarCantidad(producto, 1))" />
+                    </MudStack>
+
                     <MudText Typo="Typo.body2">
-                        Cantidad: @producto.Cantidad —
                         Subtotal: @((producto.PrecioVenta * producto.Cantidad).ToString("C2", _cultura))
                     </MudText>
                 </MudListItem>
@@ -48,17 +60,17 @@
 @if (!_cargando && string.IsNullOrWhiteSpace(_error) && _productos.Count > 0)
 {
     <MudPaper Elevation="8"
-              Class="d-flex align-center justify-space-between pa-3"
-              Style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: max(12px, env(safe-area-inset-bottom));">
+    Class="d-flex align-center justify-space-between pa-3"
+    Style="position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: max(12px, env(safe-area-inset-bottom));">
         <div>
             <MudText Typo="Typo.caption">Total</MudText>
             <MudText Typo="Typo.h6">@Total.ToString("C2", _cultura)</MudText>
         </div>
 
         <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Disabled="_procesando"
-                   OnClick="Continuar">
+        Color="Color.Primary"
+        Disabled="_procesando || _actualizando"
+        OnClick="Continuar">
             @(_procesando ? "Procesando..." : $"Continuar ({CantidadTotal})")
         </MudButton>
     </MudPaper>
@@ -69,10 +81,14 @@
 
     private List<ProductoCarrito> _productos = new();
     private bool _cargando = true;
+    private bool _actualizando;
     private bool _procesando;
     private string? _error;
 
-    private record ProductoCarrito(int ProductoId, string Nombre, decimal PrecioVenta, int Cantidad);
+    // Decidí usar un record porque se me hacía más cómodo, pero también podemos usar una clase si querés.
+    // Lo que sí desp cuando cambiemos la cantidad vamos a crear una nueva copia con la nueva cantidad. Si fuera una clase simplemente
+    // ajustaríamos la propiedad.
+    private record ProductoCarrito(int ProductoId, string Nombre, decimal PrecioVenta, int Cantidad, int Stock);
 
     private decimal Total => _productos.Sum(p => p.PrecioVenta * p.Cantidad);
     private int CantidadTotal => _productos.Sum(p => p.Cantidad);
@@ -96,7 +112,7 @@
                     continue;
                 }
 
-                _productos.Add(new ProductoCarrito(producto.ProductoId, producto.Nombre, producto.PrecioVenta, item.Cantidad));
+                _productos.Add(new ProductoCarrito(producto.ProductoId, producto.Nombre, producto.PrecioVenta, item.Cantidad, producto.Stock));
             }
         }
         catch (HttpRequestException)
@@ -115,7 +131,7 @@
 
     private async Task Continuar()
     {
-        if (_procesando || _productos.Count == 0)
+        if (_procesando || _actualizando || _productos.Count == 0)
         {
             return;
         }
@@ -145,6 +161,52 @@
         finally
         {
             _procesando = false;
+        }
+    }
+
+    private async Task CambiarCantidad(ProductoCarrito producto, int cambio)
+    {
+        if (_actualizando || _procesando)
+        {
+            return;
+        }
+
+        if (cambio > 0 && producto.Cantidad >= producto.Stock)
+        {
+            Snackbar.Add("No hay más unidades disponibles.", Severity.Warning);
+            return;
+        }
+
+        int cantidad = producto.Cantidad + cambio;
+
+        if (cantidad < 0)
+        {
+            return;
+        }
+
+        _actualizando = true;
+
+        try
+        {
+            await CarritoService.CambiarCantidad(producto.ProductoId, cantidad);
+
+            if (cantidad == 0)
+            {
+                _productos.Remove(producto);
+            }
+            else
+            {
+                int posicion = _productos.IndexOf(producto);
+                _productos[posicion] = producto with { Cantidad = cantidad };
+            }
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        finally
+        {
+            _actualizando = false;
         }
     }
 }

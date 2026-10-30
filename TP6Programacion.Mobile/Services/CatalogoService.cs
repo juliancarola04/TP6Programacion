@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using TP6Programacion.Shared.DTO.Categoria.Response;
 using TP6Programacion.Shared.DTO.Paginado.Request.Producto;
 using TP6Programacion.Shared.DTO.Paginado.Response;
 using TP6Programacion.Shared.DTO.Producto.Response;
@@ -92,5 +93,34 @@ public class CatalogoService
         respuesta.EnsureSuccessStatusCode();
 
         return await respuesta.Content.ReadFromJsonAsync<List<ProductoCarritoResponse>>() ?? throw new InvalidOperationException("No se pudieron obtener los productos.");
+    }
+
+    public async Task<List<CategoriaResponse>> ObtenerCategorias()
+    {
+        List<CategoriaResponse> categorias = new();
+        int pagina = 1;
+        bool hayMas;
+
+        do
+        {
+            string ruta = $"api/categorias?NumeroPagina={pagina}&TamanoPagina=50&OrdenarPor=nombre&Direccion=asc";
+
+            using HttpResponseMessage respuesta = await _httpClient.GetAsync(ruta);
+            respuesta.EnsureSuccessStatusCode();
+
+            var resultado = await respuesta.Content.ReadFromJsonAsync<PaginadoResponseDto<CategoriaResponse>>();
+
+            if (resultado is null)
+            {
+                throw new InvalidOperationException("No se pudieron obtener las categorías.");
+            }
+
+            categorias.AddRange(resultado.Datos);
+            hayMas = resultado.TienePaginaPosterior;
+            pagina++;
+        }
+        while (hayMas);
+
+        return categorias;
     }
 }

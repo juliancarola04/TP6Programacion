@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Categoria.Response
 @page "/catalogo"
 @using System.Globalization
 @using System.Text.Json
@@ -32,6 +33,23 @@
                 </NotAuthorized>
             </AuthorizeView>
         </MudStack>
+
+        <MudSelect T="int?" Label="Categoría" @bind-Value="_categoriaId" Disabled="_cargando">
+            <MudSelectItem T="int?" Value="@((int?)null)">Todas</MudSelectItem>
+
+            @foreach (var categoria in _categorias)
+            {
+                <MudSelectItem T="int?" Value="@((int?)categoria.Id)">
+                    @categoria.Nombre
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="string" Label="Ordenar por" @bind-Value="_orden" Disabled="_cargando">
+            <MudSelectItem T="string" Value="@("nombre")">Nombre A–Z</MudSelectItem>
+            <MudSelectItem T="string" Value="@("precioAsc")">Precio: menor a mayor</MudSelectItem>
+            <MudSelectItem T="string" Value="@("precioDesc")">Precio: mayor a menor</MudSelectItem>
+        </MudSelect>
 
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudTextField T="string"
@@ -124,6 +142,12 @@
 
 @code {
     private List<ProductoCatalogoResponse> _productos = new();
+    private List<CategoriaResponse> _categorias = new();
+    private int? _categoriaId;
+    private int? _categoriaAplicada;
+    private string _orden = "nombre";
+    private string _ordenarPorAplicado = "nombre";
+    private string _direccionAplicada = "asc";
     private string? _buscar;
     private string? _busquedaAplicada;
     private string? _error;
@@ -150,13 +174,19 @@
 
         try
         {
+            if (_categorias.Count == 0)
+            {
+                _categorias = await CatalogoService.ObtenerCategorias();
+            }
+
             var parametros = new ParametroPaginacionProductoRequest
             {
                 NumeroPagina = _pagina,
                 TamanoPagina = 12,
                 Buscar = _busquedaAplicada,
-                OrdenarPor = "nombre",
-                Direccion = "asc"
+                CategoriaId = _categoriaAplicada,
+                OrdenarPor = _ordenarPorAplicado,
+                Direccion = _direccionAplicada
             };
 
             var resultado = await CatalogoService.ObtenerCatalogo(parametros);
@@ -191,7 +221,24 @@
             return;
         }
 
+        if (_orden == "precioAsc")
+        {
+            _ordenarPorAplicado = "precio";
+            _direccionAplicada = "asc";
+        }
+        else if (_orden == "precioDesc")
+        {
+            _ordenarPorAplicado = "precio";
+            _direccionAplicada = "desc";
+        }
+        else
+        {
+            _ordenarPorAplicado = "nombre";
+            _direccionAplicada = "asc";
+        }
+
         _busquedaAplicada = _buscar?.Trim();
+        _categoriaAplicada = _categoriaId;
         _pagina = 1;
         await CargarCatalogo();
     }

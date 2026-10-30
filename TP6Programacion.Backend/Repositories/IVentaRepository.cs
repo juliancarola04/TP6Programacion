@@ -12,5 +12,6 @@ namespace TP6Programacion.Backend.Repositories
         Task<Venta?> ObtenerParaProcesarPago(int id);
         Task Crear(Venta venta);
         Task GuardarCambios();
+        Task<Venta?> ObtenerParaTicket(int id);
     }
 }
