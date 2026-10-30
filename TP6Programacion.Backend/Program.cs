@@ -106,7 +106,14 @@ try
 
         var app = builder.Build();
 
-        using (var scope = app.Services.CreateScope())
+    var webRoot = app.Environment.WebRootPath
+    ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+
+    Directory.CreateDirectory(webRoot);
+    app.Environment.WebRootPath = webRoot;
+    Log.Information("WebRoot: {WebRoot} | ContentRoot: {ContentRoot}", webRoot, app.Environment.ContentRootPath);
+
+    using (var scope = app.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<DataContext>();
 
@@ -183,14 +190,17 @@ try
 
         app.UseHttpsRedirection();
         app.UseCors("Web");
-        var imagenesPath = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads");
-        Directory.CreateDirectory(imagenesPath);
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = new PhysicalFileProvider(imagenesPath),
-            RequestPath = "/uploads"
-        });
-        app.UseAuthentication();
+
+    var imagenesPath = Path.Combine(webRoot, "uploads");
+
+    Directory.CreateDirectory(imagenesPath);
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(imagenesPath),
+        RequestPath = "/uploads"
+    });
+    app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();

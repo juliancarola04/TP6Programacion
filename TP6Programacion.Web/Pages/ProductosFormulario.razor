@@ -106,6 +106,34 @@
                                          Required="true"
                                          RequiredError="Ingresá el stock."
                                          Variant="Variant.Outlined" />
+                        <MudDivider Class="my-2" />
+
+                        <MudText Typo="Typo.subtitle1">Imagen del producto</MudText>
+
+                        @if (imagenActual is not null)
+                        {
+                            <MudImage Src="@imagenActual.Url"
+                                      Alt="@nombre"
+                                      Width="180"
+                                      Height="180"
+                                      ObjectFit="ObjectFit.Contain" />
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                El producto todavía no tiene una imagen.
+                            </MudText>
+                        }
+
+                        <InputFile OnChange="SeleccionarImagen"
+                                   accept=".jpg,.jpeg,.png" />
+
+                        @if (archivoImagen is not null)
+                        {
+                            <MudText Typo="Typo.caption">
+                                Imagen seleccionada: @archivoImagen.Name
+                            </MudText>
+                        }
 
                         @if (!string.IsNullOrWhiteSpace(errorValidacion))
                         {
@@ -151,6 +179,8 @@
 @code {
     [Parameter]
     public int? Id { get; set; }
+    private IBrowserFile? archivoImagen;
+    private ProductoImagenResponse? imagenActual;
 
     private string Titulo => Id.HasValue
         ? "Modificar producto"
@@ -187,6 +217,7 @@
                 precioVenta = producto.PrecioVenta;
                 stock = producto.Stock;
                 categoriaId = producto.CategoriaId;
+                imagenActual = producto.Imagen;
             }
         }
         catch (Exception)
@@ -225,9 +256,12 @@
         }
 
         guardando = true;
+        bool productoGuardado = false;
 
         try
         {
+            int productoId;
+
             if (Id.HasValue)
             {
                 var request = new ActualizarProductoRequest(
@@ -239,7 +273,7 @@
 
                 await ProductoService.ActualizarProducto(Id.Value, request);
 
-                mensaje = "El producto se modificó correctamente.";
+                productoId = Id.Value;
             }
             else
             {
@@ -250,10 +284,25 @@
                     stock,
                     categoriaId.Value);
 
-                await ProductoService.CrearProducto(request);
+                var productoCreado =
+                    await ProductoService.CrearProducto(request);
 
-                mensaje = "El producto se creó correctamente.";
+                productoId = productoCreado.Id;
             }
+
+            productoGuardado = true;
+
+            // Si se seleccionó una imagen, la subimos después de guardar el producto.
+            if (archivoImagen is not null)
+            {
+                imagenActual = await ProductoService.SubirImagen(
+                    productoId,
+                    archivoImagen);
+            }
+
+            mensaje = Id.HasValue
+                ? "El producto se modificó correctamente."
+                : "El producto se creó correctamente.";
 
             guardado = true;
 
@@ -262,16 +311,40 @@
         }
         catch (Exception)
         {
-            error = Id.HasValue
-                ? "No se pudo modificar el producto. Verificá los datos y tu sesión."
-                : "No se pudo crear el producto. Verificá los datos y tu sesión.";
+            error = productoGuardado
+                ? "El producto se guardó, pero no se pudo subir la imagen. Podés volver a editarlo e intentarlo nuevamente."
+                : Id.HasValue
+                    ? "No se pudo modificar el producto. Verificá los datos y tu sesión."
+                    : "No se pudo crear el producto. Verificá los datos y tu sesión.";
         }
         finally
         {
             guardando = false;
         }
     }
+    private void SeleccionarImagen(InputFileChangeEventArgs e)
+    {
+        archivoImagen = e.File;
 
+        if (archivoImagen.Size > 5 * 1024 * 1024)
+        {
+            archivoImagen = null;
+            errorValidacion = "La imagen no puede superar los 5 MB.";
+            return;
+        }
+
+        string extension = Path.GetExtension(archivoImagen.Name)
+            .ToLowerInvariant();
+
+        if (extension is not ".jpg" and not ".jpeg" and not ".png")
+        {
+            archivoImagen = null;
+            errorValidacion = "Solo se permiten imágenes JPG, JPEG o PNG.";
+            return;
+        }
+
+        errorValidacion = null;
+    }
     private void Volver()
     {
         Navigation.NavigateTo("/productos");

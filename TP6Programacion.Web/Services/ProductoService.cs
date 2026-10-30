@@ -1,4 +1,6 @@
-﻿using System.Globalization;
+﻿using Microsoft.AspNetCore.Components.Forms;
+using System.Net.Http.Headers;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using TP6Programacion.Shared.DTO.Paginado.Request.Producto;
@@ -113,6 +115,38 @@ public class ProductoService
                     HttpMethod.Delete, $"api/productos/{id}"));
 
         respuesta.EnsureSuccessStatusCode();
+    }
+    public async Task<ProductoImagenResponse> SubirImagen(
+    int productoId,
+    IBrowserFile archivo)
+    {
+        const long maxFileSize = 5 * 1024 * 1024;
+
+        using var contenido = new MultipartFormDataContent();
+
+        await using var stream = archivo.OpenReadStream(maxFileSize);
+
+        using var contenidoArchivo = new StreamContent(stream);
+
+        contenidoArchivo.Headers.ContentType =
+            new MediaTypeHeaderValue(archivo.ContentType);
+
+        contenido.Add(contenidoArchivo, "archivo", archivo.Name);
+
+        using HttpResponseMessage respuesta =
+            await _autenticacionService.EnviarAutenticado(
+                () => new HttpRequestMessage(
+                    HttpMethod.Post,
+                    $"api/productos/{productoId}/imagen")
+                {
+                    Content = contenido
+                });
+
+        respuesta.EnsureSuccessStatusCode();
+
+        return await respuesta.Content.ReadFromJsonAsync<ProductoImagenResponse>()
+            ?? throw new InvalidOperationException(
+                "El servidor no devolvió los datos de la imagen.");
     }
 }
 
