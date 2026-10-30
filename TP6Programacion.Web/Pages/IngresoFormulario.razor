@@ -1,0 +1,436 @@
+﻿
+@page "/ingresos/nuevo"
+@using Microsoft.AspNetCore.Authorization
+
+@using TP6Programacion.Shared.DTO.Ingreso.Request
+@using TP6Programacion.Shared.DTO.Paginado.Request.Producto
+@using TP6Programacion.Shared.DTO.Paginado.Response
+@using TP6Programacion.Shared.DTO.Producto.Response
+@using TP6Programacion.Shared.DTO.Proveedor.Response
+@using TP6Programacion.Web.Services
+
+
+@attribute [Authorize(Roles = "Administrador")]
+@inject IngresoService IngresoService
+@inject ProductoService ProductoService
+@inject ProveedorService ProveedorService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Registrar ingreso</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+
+    <MudStack Row="true"
+              AlignItems="AlignItems.Center"
+              Justify="Justify.SpaceBetween"
+              Class="mb-4">
+
+        <MudText Typo="Typo.h4">Registrar ingreso</MudText>
+
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => Navigation.NavigateTo("/ingresos"))">
+            Volver
+        </MudButton>
+
+    </MudStack>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">
+            @error
+        </MudAlert>
+    }
+
+    @if (cargando)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Datos del ingreso
+            </MudText>
+
+            <MudSelect T="int?"
+                       Label="Proveedor"
+                       Variant="Variant.Outlined"
+                       Value="proveedorSeleccionado"
+                       ValueChanged="CambiarProveedor"
+                       Required="true"
+                       RequiredError="Seleccioná un proveedor">
+
+                @foreach (var proveedor in proveedores)
+                {
+                    <MudSelectItem T="int?" Value="@((int?)proveedor.Id)">
+                        @proveedor.RazonSocial
+                    </MudSelectItem>
+                }
+
+            </MudSelect>
+
+        </MudPaper>
+
+        <MudPaper Class="pa-4 mb-4" Elevation="1">
+
+            <MudText Typo="Typo.h6" Class="mb-3">
+                Productos
+            </MudText>
+
+            <MudGrid Spacing="3" AlignItems="AlignItems.Center">
+
+                <MudItem xs="12" md="8">
+                    <MudSelect T="int?"
+                               Label="Seleccionar producto"
+                               Variant="Variant.Outlined"
+                               @bind-Value="productoSeleccionado"
+                               Clearable="true">
+
+                        @foreach (var producto in productos)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)producto.Id)">
+                                @producto.Nombre
+                                (Stock actual: @producto.Stock)
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               Disabled="@(!productoSeleccionado.HasValue)"
+                               OnClick="AgregarProducto">
+                        Agregar producto
+                    </MudButton>
+                </MudItem>
+
+            </MudGrid>
+
+            @if (items.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-4">
+                    Todavía no agregaste productos al ingreso.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable T="IngresoItemFormulario"
+                          Items="@items"
+                          Dense="true"
+                          Hover="true"
+                          Class="mt-4">
+
+                    <HeaderContent>
+                        <MudTh>Producto</MudTh>
+                        <MudTh Style="min-width:120px">Cantidad</MudTh>
+                        <MudTh Style="min-width:150px">Precio unitario</MudTh>
+                        <MudTh>Subtotal</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd DataLabel="Producto">
+                            @context.ProductoNombre
+                        </MudTd>
+
+                        <MudTd DataLabel="Cantidad">
+                            <MudNumericField T="int"
+                                             @bind-Value="context.Cantidad"
+                                             Min="1"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Immediate="true" />
+                        </MudTd>
+
+                        <MudTd DataLabel="Precio unitario">
+                            <MudNumericField T="decimal"
+                                             @bind-Value="context.PrecioUnitario"
+                                             Min="0.01m"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Immediate="true"
+                                             Format="N2" />
+                        </MudTd>
+
+                        <MudTd DataLabel="Subtotal">
+                            @((context.Cantidad * context.PrecioUnitario).ToString("C2"))
+                        </MudTd>
+
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Title="Quitar producto"
+                                           OnClick="@(() => QuitarProducto(context))" />
+                        </MudTd>
+                    </RowTemplate>
+
+                </MudTable>
+
+                <MudDivider Class="my-4" />
+
+                <MudStack Row="true"
+                          Justify="Justify.FlexEnd"
+                          AlignItems="AlignItems.Center">
+
+                    <MudText Typo="Typo.h6">
+                        Total:
+                    </MudText>
+
+                    <MudText Typo="Typo.h5" Color="Color.Success">
+                        @CalcularTotal().ToString("C2")
+                    </MudText>
+
+                </MudStack>
+            }
+
+        </MudPaper>
+
+        <MudStack Row="true" Justify="Justify.FlexEnd">
+
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="@(() => Navigation.NavigateTo("/ingresos"))"
+                       Disabled="@guardando">
+                Cancelar
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="GuardarIngreso"
+                       Disabled="@(guardando || items.Count == 0)">
+
+                @if (guardando)
+                {
+                    <MudProgressCircular Size="Size.Small"
+                                         Indeterminate="true"
+                                         Class="mr-2" />
+                    <MudText>Guardando...</MudText>
+                }
+                else
+                {
+                    <MudText>Registrar ingreso</MudText>
+                }
+
+            </MudButton>
+
+        </MudStack>
+    }
+
+</MudContainer>
+
+@code {
+    private List<ObtenerProveedorResponse> proveedores = new();
+    private List<ProductoListadoResponse> productos = new();
+    private List<IngresoItemFormulario> items = new();
+
+    private int? proveedorSeleccionado;
+    private int? productoSeleccionado;
+
+    private bool cargando = true;
+    private bool guardando;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        error = null;
+
+        try
+        {
+            await CargarProveedores();
+            await CargarProductos();
+        }
+        catch (Exception ex)
+        {
+            error = $"No se pudieron cargar los datos: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CargarProveedores()
+    {
+        proveedores.Clear();
+
+        int numeroPagina = 1;
+        PaginadoResponseDto<ObtenerProveedorResponse> resultado;
+
+        do
+        {
+            resultado = await ProveedorService.ObtenerProveedores(numeroPagina);
+
+            proveedores.AddRange(resultado.Datos);
+
+            numeroPagina++;
+        }
+        while (numeroPagina <= resultado.TotalPaginas);
+    }
+
+    private async Task CargarProductos()
+    {
+        productos.Clear();
+
+        int numeroPagina = 1;
+        PaginadoResponseDto<ProductoListadoResponse> resultado;
+
+        do
+        {
+            var parametros = new ParametroPaginacionProductoRequest
+            {
+                NumeroPagina = numeroPagina,
+                TamanoPagina = 50,
+                Direccion = "asc"
+            };
+
+            resultado = await ProductoService.ObtenerProductos(parametros);
+
+            productos.AddRange(resultado.Datos);
+
+            numeroPagina++;
+        }
+        while (numeroPagina <= resultado.TotalPaginas);
+    }
+
+    private Task CambiarProveedor(int? proveedorId)
+    {
+        proveedorSeleccionado = proveedorId;
+        return Task.CompletedTask;
+    }
+
+    private void AgregarProducto()
+    {
+        if (!productoSeleccionado.HasValue)
+            return;
+
+        var producto = productos.FirstOrDefault(
+            p => p.Id == productoSeleccionado.Value);
+
+        if (producto is null)
+            return;
+
+        if (items.Any(i => i.ProductoId == producto.Id))
+        {
+            Snackbar.Add(
+                "Este producto ya fue agregado al ingreso.",
+                Severity.Warning);
+
+            return;
+        }
+
+        items.Add(new IngresoItemFormulario
+        {
+            ProductoId = producto.Id,
+            ProductoNombre = producto.Nombre,
+            Cantidad = 1,
+            PrecioUnitario = producto.PrecioCompra
+        });
+
+        productoSeleccionado = null;
+    }
+
+    private void QuitarProducto(IngresoItemFormulario item)
+    {
+        items.Remove(item);
+    }
+
+    private decimal CalcularTotal()
+    {
+        return items.Sum(i => i.Cantidad * i.PrecioUnitario);
+    }
+
+    private async Task GuardarIngreso()
+    {
+        error = null;
+
+        if (!proveedorSeleccionado.HasValue)
+        {
+            Snackbar.Add(
+                "Seleccioná un proveedor.",
+                Severity.Warning);
+
+            return;
+        }
+
+        if (items.Count == 0)
+        {
+            Snackbar.Add(
+                "Agregá al menos un producto.",
+                Severity.Warning);
+
+            return;
+        }
+
+        if (items.Any(i => i.Cantidad <= 0))
+        {
+            Snackbar.Add(
+                "Todas las cantidades deben ser mayores a cero.",
+                Severity.Warning);
+
+            return;
+        }
+
+        if (items.Any(i => i.PrecioUnitario <= 0))
+        {
+            Snackbar.Add(
+                "Todos los precios unitarios deben ser mayores a cero.",
+                Severity.Warning);
+
+            return;
+        }
+
+        guardando = true;
+
+        try
+        {
+            var request = new CrearIngresoRequest(
+                ProveedorId: proveedorSeleccionado.Value,
+                Items: items.Select(i => new CrearIngresoItemRequest(
+                    ProductoId: i.ProductoId,
+                    Cantidad: i.Cantidad,
+                    PrecioUnitario: i.PrecioUnitario
+                )).ToList()
+            );
+
+            var ingreso = await IngresoService.CrearIngreso(request);
+
+            Snackbar.Add(
+                $"El ingreso #{ingreso.Id} fue registrado correctamente.",
+                Severity.Success);
+
+            Navigation.NavigateTo("/ingresos");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(
+                $"No se pudo registrar el ingreso: {ex.Message}",
+                Severity.Error);
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private class IngresoItemFormulario
+    {
+        public int ProductoId { get; set; }
+        public string ProductoNombre { get; set; } = string.Empty;
+        public int Cantidad { get; set; } = 1;
+        public decimal PrecioUnitario { get; set; }
+    }
+}
+
