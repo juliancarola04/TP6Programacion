@@ -11,26 +11,44 @@
 lo guardamos en la variable estado (termina siendo el usuario a fin de cuentas)*@
 <AuthorizeView Context="estado">
     <Authorized>
-        <div class="page">
-            <AuthorizeView Roles="Administrador">
-            <Authorized>
+        <MudLayout>
+            <MudAppBar Elevation="1"
+                       Style="background-color: var(--mud-palette-surface); color: var(--mud-palette-text-primary);">
 
-            <div class="sidebar">
-                <NavMenu />
-            </div>
-                </Authorized>
+                <AuthorizeView Roles="Administrador" Context="permisosBarra">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                                   Color="Color.Inherit"
+                                   Edge="Edge.Start"
+                                   OnClick="AlternarMenu" />
+                </AuthorizeView>
+
+                <MudText Typo="Typo.h6">TP6Programacion.Web</MudText>
+
+                <MudSpacer />
+
+                <MudText Class="mr-3">
+                    @estado.User.Identity?.Name (@estado.User.FindFirst(ClaimTypes.Role)?.Value)
+                </MudText>
+
+                <BotonCerrarSesion />
+            </MudAppBar>
+
+            <AuthorizeView Roles="Administrador" Context="permisosMenu">
+                <MudDrawer @bind-Open="_menuAbierto"
+                           Variant="DrawerVariant.Responsive"
+                           ClipMode="DrawerClipMode.Always"
+                           Elevation="1"
+                           Width="250px">
+                    <NavMenu />
+                </MudDrawer>
             </AuthorizeView>
-            <main>
-                <div class="top-row px-4">
-                    <span>@estado.User.Identity?.Name (@estado.User.FindFirst(ClaimTypes.Role)?.Value)</span>
-                    <BotonCerrarSesion />
-                </div>
 
-                <article class="content px-4">
+            <MudMainContent>
+                <div class="pa-4">
                     @Body
-                </article>
-            </main>
-        </div>
+                </div>
+            </MudMainContent>
+        </MudLayout>
     </Authorized>
 
     <NotAuthorized>
@@ -39,3 +57,12 @@ lo guardamos en la variable estado (termina siendo el usuario a fin de cuentas)*
         </article>
     </NotAuthorized>
 </AuthorizeView>
+
+@code {
+    private bool _menuAbierto = true;
+
+    private void AlternarMenu()
+    {
+        _menuAbierto = !_menuAbierto;
+    }
+}

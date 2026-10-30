@@ -166,6 +166,26 @@ public class VentasController : ControllerBase
             return NotFound(e.Message);
         }
     }
+    // Este se va a usar para mostrar las ventas individuales en la web
+    [HttpGet("{id:int}/pdf")]
+    [Authorize(Roles = "Administrador")]
+    public async Task<IActionResult> MostrarTicketAdmin(int id)
+    {
+        try
+        {
+            ComprobanteVentaResponse comprobante = await _ventaService.ObtenerParaTicketAdmin(id);
+
+            var documento = new ReporteVenta(comprobante);
+            byte[] pdf = documento.GeneratePdf();
+
+            return File(pdf, "application/pdf", $"Venta-{comprobante.Venta.Id}.pdf");
+        }
+        catch (RecursoNoExisteException e)
+        {
+            return NotFound(e.Message);
+        }
+    }
+
     [HttpDelete("{id}")]
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Anular(int id)

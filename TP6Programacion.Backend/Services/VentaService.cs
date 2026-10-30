@@ -451,5 +451,20 @@ namespace TP6Programacion.Backend.Services
 
             return new ComprobanteVentaResponse(MapearADto(venta), pagos);
         }
+        
+        // Al final lo terminé reutilizando yo jajjajaja
+        public async Task<ComprobanteVentaResponse> ObtenerParaTicketAdmin(int id)
+        {
+            Venta? venta = await _repo.ObtenerParaTicket(id);
+
+            if (venta is null)
+            {
+                throw new RecursoNoExisteException("No existe ninguna venta con ese id.");
+            }
+
+            var pagos = venta.Pagos.OrderBy(p => p.Fecha).ThenBy(p => p.Id).Select(p => new PagoComprobanteResponse(p.Monto, p.Metodo, p.ReferenciaPago, p.Estado)).ToList();
+
+            return new ComprobanteVentaResponse(MapearADto(venta), pagos);
+        }
     }
 }

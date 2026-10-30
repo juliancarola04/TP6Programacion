@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using TP6Programacion.Shared.DTO.Categoria.Request;
 using TP6Programacion.Shared.DTO.Categoria.Response;
 using TP6Programacion.Shared.DTO.Paginado.Response;
 
@@ -14,6 +15,69 @@ public class CategoriaService
     public CategoriaService(AutenticacionService autenticacionService)
     {
         _autenticacionService = autenticacionService;
+    }
+
+    public async Task Crear(CrearCategoriaRequest request)
+    {
+        using var respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Post, "api/categorias")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        if (respuesta.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(mensaje))
+        {
+            mensaje = "No se pudo completar la operación.";
+        }
+
+        throw new InvalidOperationException(mensaje);
+    }
+
+    public async Task Actualizar(int id, ActualizarCategoriaRequest request)
+    {
+        using var respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Put, $"api/categorias/{id}")
+        {
+            Content = JsonContent.Create(request)
+        });
+
+        if (respuesta.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(mensaje))
+        {
+            mensaje = "No se pudo completar la operación.";
+        }
+
+        throw new InvalidOperationException(mensaje);
+    }
+
+    public async Task Eliminar(int id)
+    {
+        using var respuesta = await _autenticacionService.EnviarAutenticado(() => new HttpRequestMessage(HttpMethod.Delete, $"api/categorias/{id}"));
+
+        if (respuesta.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        string mensaje = await respuesta.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(mensaje))
+        {
+            mensaje = "No se pudo completar la operación.";
+        }
+
+        throw new InvalidOperationException(mensaje);
     }
 
     public async Task<List<CategoriaResponse>> ObtenerCategorias()

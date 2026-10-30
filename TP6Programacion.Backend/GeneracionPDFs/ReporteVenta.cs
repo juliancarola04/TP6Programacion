@@ -32,7 +32,7 @@ namespace TP6Programacion.Backend.GeneracionPDFs
                 {
                     column.Item().Text($"Venta #{venta.Id}").FontSize(20).Bold();
                     column.Item().Text($"Fecha: {venta.Fecha:dd/MM/yyyy HH:mm} UTC");
-                    column.Item().Text($"Cliente: {venta.ClienteNombre ?? "Sin cliente"}");
+                    column.Item().Text($"Cliente: {venta.ClienteNombre ?? "Consumidor final"}");
                     column.Item().Text($"Estado: {venta.Estado}");
                 });
 
