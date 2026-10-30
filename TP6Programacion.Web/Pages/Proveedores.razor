@@ -1,0 +1,341 @@
+﻿@page "/proveedores"
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Shared.DTO.Proveedor.Request
+@using TP6Programacion.Shared.DTO.Proveedor.Response
+@using TP6Programacion.Web.Services
+@attribute [Authorize(Roles = "Administrador")]
+@inject ProveedorService ProveedorService
+@inject ISnackbar Snackbar
+
+<PageTitle>Proveedores</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h5">Proveedores</MudText>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Disabled="_ocupado" OnClick="Nuevo">
+            Nuevo proveedor
+        </MudButton>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        }
+
+        @if (_mostrarFormulario)
+        {
+            <MudPaper Class="pa-4">
+                <MudForm @ref="_formulario" Disabled="_ocupado">
+                    <MudStack Spacing="3">
+                        @if (_idEdicion.HasValue)
+                        {
+                            <MudText Typo="Typo.h6">Editar proveedor</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h6">Nuevo proveedor</MudText>
+                        }
+
+                        <MudTextField T="string" Label="Razón social"
+                                      @bind-Value="_razonSocial"
+                                      Required="true" MaxLength="30" />
+
+                        <MudTextField T="string" Label="CUIT"
+                                      @bind-Value="_cuit"
+                                      Required="true" MaxLength="13" />
+
+                        <MudTextField T="string" Label="Dirección"
+                                      @bind-Value="_direccion"
+                                      Required="true" MaxLength="40" />
+
+                        <MudTextField T="string" Label="Email"
+                                      @bind-Value="_email"
+                                      InputType="InputType.Email"
+                                      Required="true" MaxLength="320" />
+
+                        <MudTextField T="string" Label="Teléfono"
+                                      @bind-Value="_telefono"
+                                      InputType="InputType.Telephone"
+                                      Required="true" MaxLength="13" />
+
+                        <MudStack Row="true">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       Disabled="_ocupado" OnClick="Guardar">
+                                Guardar
+                            </MudButton>
+
+                            <MudButton Disabled="_ocupado" OnClick="Cancelar">
+                                Cancelar
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+        }
+
+        @if (_proveedorADarDeBaja is not null)
+        {
+            <MudAlert Severity="Severity.Warning">
+                ¿Dar de baja a @_proveedorADarDeBaja.RazonSocial?
+
+                <MudButton Color="Color.Error" Disabled="_ocupado" OnClick="DarDeBaja">
+                    Confirmar
+                </MudButton>
+
+                <MudButton Disabled="_ocupado" OnClick="CancelarBaja">
+                    Cancelar
+                </MudButton>
+            </MudAlert>
+        }
+
+        <MudTable T="ObtenerProveedorResponse" Items="_proveedores"
+                  Loading="_ocupado" Hover="true" RowsPerPage="10">
+            <HeaderContent>
+                <MudTh>Razón social</MudTh>
+                <MudTh>CUIT</MudTh>
+                <MudTh>Dirección</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Teléfono</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd DataLabel="Razón social">@context.RazonSocial</MudTd>
+                <MudTd DataLabel="CUIT">@context.Cuit</MudTd>
+                <MudTd DataLabel="Dirección">@context.Direccion</MudTd>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Teléfono">@context.Telefono</MudTd>
+
+                <MudTd DataLabel="Acciones">
+                    <MudButton Disabled="_ocupado" OnClick="@(() => Editar(context))">
+                        Editar
+                    </MudButton>
+
+                    <MudButton Color="Color.Error" Disabled="_ocupado"
+                               OnClick="@(() => ConfirmarBaja(context))">
+                        Dar de baja
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText>No hay proveedores.</MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+        @if (_totalPaginas > 1)
+        {
+            <MudPagination Count="_totalPaginas"
+                           Selected="_pagina"
+                           SelectedChanged="CambiarPagina"
+                           Disabled="_ocupado"
+                           Color="Color.Primary" />
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private List<ObtenerProveedorResponse> _proveedores = new();
+    private ObtenerProveedorResponse? _proveedorADarDeBaja;
+    private MudForm _formulario = null!;
+    private int? _idEdicion;
+    private int _pagina = 1;
+    private int _totalPaginas;
+    private string _razonSocial = string.Empty;
+    private string _cuit = string.Empty;
+    private string _direccion = string.Empty;
+    private string _email = string.Empty;
+    private string _telefono = string.Empty;
+    private string? _error;
+    private bool _mostrarFormulario;
+    private bool _ocupado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            var resultado = await ProveedorService.ObtenerProveedores(_pagina);
+
+            _proveedores = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudieron cargar los proveedores.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        if (_ocupado)
+        {
+            return;
+        }
+
+        _pagina = pagina;
+        await Cargar();
+    }
+
+    private void Nuevo()
+    {
+        _idEdicion = null;
+        _razonSocial = string.Empty;
+        _cuit = string.Empty;
+        _direccion = string.Empty;
+        _email = string.Empty;
+        _telefono = string.Empty;
+        _proveedorADarDeBaja = null;
+        _error = null;
+        _mostrarFormulario = true;
+    }
+
+    private void Editar(ObtenerProveedorResponse proveedor)
+    {
+        _idEdicion = proveedor.Id;
+        _razonSocial = proveedor.RazonSocial;
+        _cuit = proveedor.Cuit;
+        _direccion = proveedor.Direccion;
+        _email = proveedor.Email;
+        _telefono = proveedor.Telefono;
+        _proveedorADarDeBaja = null;
+        _error = null;
+        _mostrarFormulario = true;
+    }
+
+    private void Cancelar()
+    {
+        _mostrarFormulario = false;
+    }
+
+    private void ConfirmarBaja(ObtenerProveedorResponse proveedor)
+    {
+        _proveedorADarDeBaja = proveedor;
+        _mostrarFormulario = false;
+        _error = null;
+    }
+
+    private void CancelarBaja()
+    {
+        _proveedorADarDeBaja = null;
+    }
+
+    private async Task Guardar()
+    {
+        if (_ocupado)
+        {
+            return;
+        }
+
+        await _formulario.ValidateAsync();
+
+        if (!_formulario.IsValid)
+        {
+            return;
+        }
+
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            if (_idEdicion.HasValue)
+            {
+                int id = _idEdicion.Value;
+
+                var request = new ActualizarProveedorRequest(_razonSocial.Trim(), _cuit.Trim(), _direccion.Trim(), _email.Trim(), _telefono.Trim());
+
+                await ProveedorService.Actualizar(id, request);
+            }
+            else
+            {
+                var request = new CrearProveedorRequest(_razonSocial.Trim(), _cuit.Trim(), _direccion.Trim(), _email.Trim(), _telefono.Trim());
+
+                await ProveedorService.Crear(request);
+                _pagina = 1;
+            }
+
+            _mostrarFormulario = false;
+            Snackbar.Add("Proveedor guardado.", Severity.Success);
+
+            var resultado = await ProveedorService.ObtenerProveedores(_pagina);
+
+            _proveedores = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la operación.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+
+    private async Task DarDeBaja()
+    {
+        if (_proveedorADarDeBaja is null || _ocupado)
+        {
+            return;
+        }
+
+        int id = _proveedorADarDeBaja.Id;
+
+        _ocupado = true;
+        _error = null;
+
+        try
+        {
+            await ProveedorService.DarDeBaja(id);
+
+            _proveedorADarDeBaja = null;
+            Snackbar.Add("Proveedor dado de baja.", Severity.Success);
+
+            if (_proveedores.Count == 1 && _pagina > 1)
+            {
+                _pagina--;
+            }
+
+            var resultado = await ProveedorService.ObtenerProveedores(_pagina);
+
+            _proveedores = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo completar la operación.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _ocupado = false;
+        }
+    }
+}
