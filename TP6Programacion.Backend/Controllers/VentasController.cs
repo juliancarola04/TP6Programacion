@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using QuestPDF.Fluent;
 using System.Security.Claims;
 using TP6Programacion.Backend.Excepciones;
+using TP6Programacion.Backend.GeneracionPDFs;
 using TP6Programacion.Backend.Models.ModeloAuxiliar;
 using TP6Programacion.Backend.Services;
 using TP6Programacion.Backend.Utilidades;
 using TP6Programacion.Shared.DTO.Paginado.Request.Venta;
 using TP6Programacion.Shared.DTO.Paginado.Response;
+using TP6Programacion.Shared.DTO.PDFs.Response;
 using TP6Programacion.Shared.DTO.Venta.Request;
 using TP6Programacion.Shared.DTO.Venta.Response;
 
@@ -136,6 +139,33 @@ public class VentasController : ControllerBase
         catch (RecursoNoExisteException e) { return NotFound(e.Message); }
     }
 
+    // Este va a ser el que vamos a usar para mostrar las compras del cliente. Fijate si querés cambiarle el rol y lo querés adaptar a algo tuyo :3
+    [HttpGet("mis-compras/{id:int}/pdf")]
+    [Authorize(Roles = "Cliente")]
+    public async Task<IActionResult> MostrarTicket(int id)
+    {
+        string? idJWT = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(idJWT, out int usuarioId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            ComprobanteVentaResponse comprobante = await _ventaService.ObtenerParaTicket(id, usuarioId);
+
+            var documento = new ReporteVenta(comprobante);
+
+            byte[] pdf = documento.GeneratePdf();
+
+            return File(pdf, "application/pdf", $"Compra-{comprobante.Venta.Id}.pdf");
+        }
+        catch (RecursoNoExisteException e)
+        {
+            return NotFound(e.Message);
+        }
+    }
     [HttpDelete("{id}")]
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Anular(int id)

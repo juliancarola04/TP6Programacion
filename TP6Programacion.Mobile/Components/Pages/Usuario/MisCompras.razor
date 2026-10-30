@@ -1,0 +1,149 @@
+﻿@page "/mis-compras"
+@using Microsoft.AspNetCore.Authorization
+@using TP6Programacion.Mobile.Services
+@using TP6Programacion.Shared.DTO.Venta.Response
+@attribute [Authorize(Roles = "Cliente")]
+@inject ComprasService ComprasService
+@using Microsoft.Maui.ApplicationModel
+@using Microsoft.Maui.Storage
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudText Typo="Typo.h5" HtmlTag="h1">Mis compras</MudText>
+
+    @if (_cargando)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error">@_error</MudAlert>
+        <MudButton OnClick="CargarCompras">Reintentar</MudButton>
+    }
+    else if (_compras.Count == 0)
+    {
+        <MudText>No tenés compras para mostrar.</MudText>
+    }
+    else
+    {
+        <MudList T="VentaListadoResponse">
+            @foreach (var compra in _compras)
+            {
+                <MudListItem T="VentaListadoResponse" @key="compra.Id">
+                    <MudText Typo="Typo.h6">Compra #@compra.Id</MudText>
+                    <MudText>@compra.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                    <MudText>Estado: @compra.Estado</MudText>
+                    <MudText>Total: @compra.Total.ToString("C2")</MudText>
+                </MudListItem>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                           Disabled="_descargando"
+                           OnClick="@(() => AbrirComprobante(compra.Id))">
+                    Ver comprobante
+                </MudButton>
+            }
+        </MudList>
+
+        @if (_totalPaginas > 1)
+        {
+            <MudPagination Count="_totalPaginas"
+                           Selected="_pagina"
+                           SelectedChanged="CambiarPagina"
+                           Color="Color.Primary" />
+        }
+    }
+</MudContainer>
+
+
+    @code {
+    private List<VentaListadoResponse> _compras = new();
+    private int _pagina = 1;
+    private int _totalPaginas;
+    private bool _cargando;
+    private string? _error;
+    private bool _descargando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCompras();
+    }
+
+    private async Task CargarCompras()
+    {
+        if (_cargando)
+        {
+            return;
+        }
+
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            var resultado = await ComprasService.ObtenerMisCompras(_pagina);
+
+            _compras = resultado.Datos;
+            _pagina = resultado.NumeroPagina;
+            _totalPaginas = resultado.TotalPaginas;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudieron consultar tus compras. Intentá nuevamente.";
+        }
+        catch (InvalidOperationException e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task AbrirComprobante(int ventaId)
+    {
+        if (_descargando)
+            return;
+
+        _descargando = true;
+
+        try
+        {
+            byte[] pdf = await ComprasService.ObtenerComprobante(ventaId);
+
+            string ruta = Path.Combine(FileSystem.CacheDirectory, $"Compra-{ventaId}.pdf");
+
+            await File.WriteAllBytesAsync(ruta, pdf);
+
+            bool abierto = await Launcher.Default.OpenAsync(new OpenFileRequest("Comprobante", new ReadOnlyFile(ruta, "application/pdf")));
+
+            if (!abierto)
+                Snackbar.Add("No se pudo abrir el PDF. Comprobá que tengas una aplicación compatible.", Severity.Warning);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("No se pudo descargar el comprobante. Intentá nuevamente.", Severity.Error);
+        }
+        catch (InvalidOperationException e)
+        {
+            Snackbar.Add(e.Message, Severity.Error);
+        }
+        finally
+        {
+            _descargando = false;
+        }
+    }
+
+    private async Task CambiarPagina(int pagina)
+    {
+        if (_cargando)
+        {
+            return;
+        }
+
+        _pagina = pagina;
+        await CargarCompras();
+    }
+}

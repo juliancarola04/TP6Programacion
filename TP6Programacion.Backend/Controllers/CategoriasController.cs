@@ -23,6 +23,7 @@ public class CategoriasController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<PaginadoResponseDto<CategoriaResponse>>> ObtenerTodas(
         [FromQuery] ParametroPaginacionCategoriaRequest parametros)
     {
