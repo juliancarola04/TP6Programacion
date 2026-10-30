@@ -1,7 +1,5 @@
 @inherits LayoutComponentBase
 @using System.Security.Claims
-@inject NavigationManager Navigation
-
 
 <MudThemeProvider />
 <MudPopoverProvider />
@@ -10,22 +8,59 @@
 
 <AuthorizeView Context="estado">
     <Authorized>
-        <div class="page">
-            <div class="sidebar">
-                <NavMenu />
-            </div>
+        <MudLayout>
+            <MudAppBar Elevation="1"
+                       Style="background-color: var(--mud-palette-surface); color: var(--mud-palette-text-primary);">
 
-            <main>
-                <div class="top-row px-4">
-                    <span>@estado.User.Identity?.Name (@estado.User.FindFirst(ClaimTypes.Role)?.Value)</span>
-                    <BotonCerrarSesion />
+                <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                               Color="Color.Inherit"
+                               Edge="Edge.Start"
+                               OnClick="AbrirMenu" />
+
+                <MudText Typo="Typo.h6">
+                    TP6Programacion
+                </MudText>
+            </MudAppBar>
+
+            <MudDrawer @bind-Open="_menuAbierto"
+                       Variant="DrawerVariant.Temporary"
+                       Elevation="2"
+                       Width="260px">
+
+                <MudDrawerHeader>
+                    <MudText Typo="Typo.h6">Menú</MudText>
+
+                    <MudSpacer />
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   OnClick="CerrarMenu" />
+                </MudDrawerHeader>
+
+                <div @onclick="CerrarMenu">
+                    <NavMenu />
                 </div>
 
-                <article class="content px-4">
+                <MudDivider />
+
+                <div class="pa-4">
+                    <MudText Typo="Typo.subtitle1">
+                        @estado.User.Identity?.Name
+                    </MudText>
+
+                    <MudText Typo="Typo.body2">
+                        @estado.User.FindFirst(ClaimTypes.Role)?.Value
+                    </MudText>
+
+                    <BotonCerrarSesion />
+                </div>
+            </MudDrawer>
+
+            <MudMainContent>
+                <div class="pa-4">
                     @Body
-                </article>
-            </main>
-        </div>
+                </div>
+            </MudMainContent>
+        </MudLayout>
     </Authorized>
 
     <NotAuthorized>
@@ -34,3 +69,17 @@
         </article>
     </NotAuthorized>
 </AuthorizeView>
+
+@code {
+    private bool _menuAbierto;
+
+    private void AbrirMenu()
+    {
+        _menuAbierto = true;
+    }
+
+    private void CerrarMenu()
+    {
+        _menuAbierto = false;
+    }
+}

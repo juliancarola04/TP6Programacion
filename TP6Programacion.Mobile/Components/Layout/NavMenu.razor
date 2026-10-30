@@ -1,30 +1,19 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">TP6Programacion.Mobile</a>
-    </div>
-</div>
+﻿<MudNavMenu Class="pa-2">
+    <MudNavLink Href="/"
+                Match="NavLinkMatch.All"
+                Icon="@Icons.Material.Filled.Home">
+        Inicio
+    </MudNavLink>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <MudNavLink Href="/catalogo"
+                Icon="@Icons.Material.Filled.Storefront">
+        Catálogo
+    </MudNavLink>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <MudNavMenu>
-        <div class="nav-item px-3">
-            <MudNavLink Class="nav-link" Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" IconColor="Color.Inherit">
-                Inicio
-            </MudNavLink>
-        </div>
-        <div class="nav-item px-3">
-            <MudNavLink Class="nav-link" Href="/catalogo" Icon="@Icons.Material.Filled.Storefront" IconColor="Color.Inherit">
-                Catálogo
-            </MudNavLink>
-        </div>
-
-        <AuthorizeView Roles="Cliente">
-            <div class="nav-item px-3">
-                <MudNavLink Href="/mis-compras" Icon="@Icons.Material.Filled.ReceiptLong">
-                    Mis compras
-                </MudNavLink>
-            </div>
-        </AuthorizeView>
-    </MudNavMenu>
-</div>
+    <AuthorizeView Roles="Cliente">
+        <MudNavLink Href="/mis-compras"
+                    Icon="@Icons.Material.Filled.ReceiptLong">
+            Mis compras
+        </MudNavLink>
+    </AuthorizeView>
+</MudNavMenu>
